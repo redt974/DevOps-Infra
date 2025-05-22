@@ -1,0 +1,42 @@
+- name: Installation Arch Linux à distance
+  hosts: arch_target
+  become: true
+
+  vars_prompt:
+    - name: "disk"
+      prompt: "Nom du disque (ex: /dev/sda)"
+      private: no
+
+    - name: "hostname"
+      prompt: "Nom de la machine (hostname)"
+      private: no
+
+    - name: "locale"
+      prompt: "Locale système (ex: fr_FR.UTF-8)"
+      default: "fr_FR.UTF-8"
+      private: no
+
+    - name: "timezone"
+      prompt: "Fuseau horaire (ex: Europe/Paris)"
+      default: "Europe/Paris"
+      private: no
+
+    - name: "user_name"
+      prompt: "Nom de l'utilisateur à créer"
+      default: "thib"
+      private: no
+
+    - name: "user_password"
+      prompt: "Mot de passe de l'utilisateur"
+      private: yes
+      confirm: true
+
+  pre_tasks:
+    - name: Vérifier que les deux mots de passe correspondent
+      assert:
+        that: user_password_confirm == user_password
+        fail_msg: "❌ Les mots de passe ne correspondent pas. Relance le playbook."
+        success_msg: "✅ Mot de passe confirmé avec succès."
+
+  roles:
+    - archinstall

@@ -1,0 +1,5 @@
+- import_tasks: partition.yml
+- import_tasks: format.yml
+- import_tasks: mount.yml
+- import_tasks: base.yml
+- import_tasks: chroot.yml

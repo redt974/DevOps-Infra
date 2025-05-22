@@ -1,0 +1,243 @@
+- name: Installation complète d'Arch Linux
+  hosts: localhost
+  become: true
+  vars_prompt:
+    - name: "user_name"
+      prompt: "Nom d'utilisateur"
+      private: no
+    - name: "user_password"
+      prompt: "Mot de passe"
+      private: yes
+    - name: "user_password_confirm"
+      prompt: "Confirmation du mot de passe"
+      private: yes
+  pre_tasks:
+    - name: Vérification que les mots de passe correspondent
+      fail:
+        msg: "❌ Les mots de passe ne correspondent pas."
+      when: user_password != user_password_confirm
+
+  vars:
+    disk: /dev/sda
+    hostname: arch-linux
+    locale: fr_FR.UTF-8
+    timezone: Europe/Paris
+
+  tasks:
+
+  # ─────────────────────────────────────────────────────────────
+  # 🧹 Nettoyage du disque et suppression des partitions existantes
+  # ─────────────────────────────────────────────────────────────
+  - name: Nettoyage des anciennes partitions
+    shell: |
+      for PART in $(lsblk -nr -o NAME {{ disk }} | grep -E "^$(basename {{ disk }})p?[0-9]+$"); do
+        wipefs --all --force "/dev/$PART"
+      done
+    args:
+      executable: /bin/bash
+
+  - name: Création de la table GPT
+    shell: parted -s {{ disk }} mklabel gpt
+    args:
+      executable: /bin/bash
+
+  # ─────────────────────────────────────────────────────────────
+  # 🧱 Création des partitions
+  # ─────────────────────────────────────────────────────────────
+  - name: Partition BIOS boot
+    command: parted -s {{ disk }} mkpart primary 2MiB 3MiB
+
+  - name: Flag bios_grub
+    command: parted -s {{ disk }} set 1 bios_grub on
+
+  - name: Partition boot FAT32
+    command: parted -s {{ disk }} mkpart primary fat32 3MiB 553MiB
+
+  - name: Flag boot
+    command: parted -s {{ disk }} set 2 boot on
+
+  - name: Partition swap
+    command: parted -s {{ disk }} mkpart primary linux-swap 553MiB 4553MiB
+
+  - name: Partition système root ext4
+    command: parted -s {{ disk }} mkpart primary ext4 4553MiB 100%
+
+  - name: Attente pour relecture des partitions
+    shell: |
+      sync
+      partprobe {{ disk }}
+      sleep 5
+
+  # ─────────────────────────────────────────────────────────────
+  # 🧪 Formatage des partitions
+  # ─────────────────────────────────────────────────────────────
+  - name: Formatage de la partition /boot
+    command: mkfs.fat -F32 {{ disk }}2
+
+  - name: Formatage de la partition swap
+    command: mkswap {{ disk }}3
+
+  - name: Activation de la swap
+    command: swapon {{ disk }}3
+
+  - name: Formatage de la partition /
+    command: mkfs.ext4 {{ disk }}4
+
+  # ─────────────────────────────────────────────────────────────
+  # 📦 Montage des partitions
+  # ─────────────────────────────────────────────────────────────
+  - name: Montage de /
+    mount:
+      src: "{{ disk }}4"
+      path: /mnt
+      fstype: ext4
+      state: mounted
+
+  - name: Création du dossier /mnt/boot
+    file:
+      path: /mnt/boot
+      state: directory
+
+  - name: Montage de /boot
+    mount:
+      src: "{{ disk }}2"
+      path: /mnt/boot
+      fstype: vfat
+      state: mounted
+
+  # ─────────────────────────────────────────────────────────────
+  # ⏱ Synchronisation NTP
+  # ─────────────────────────────────────────────────────────────
+  - name: Activer NTP
+    command: timedatectl set-ntp true
+
+  # ─────────────────────────────────────────────────────────────
+  # 📥 Installation du système de base
+  # ─────────────────────────────────────────────────────────────
+  - name: Installation base system avec pacstrap
+    command: >
+      pacstrap /mnt base base-devel linux linux-firmware vim sudo openssh grub dhcpcd --noconfirm
+
+  # ─────────────────────────────────────────────────────────────
+  # 📄 Génération du fstab
+  # ─────────────────────────────────────────────────────────────
+  - name: Génération du fichier fstab
+    command: genfstab -U /mnt >> /mnt/etc/fstab
+
+  # ─────────────────────────────────────────────────────────────
+  # ⚙️ Configuration du Bootloader GRUB (BIOS ou UEFI)
+  # ─────────────────────────────────────────────────────────────
+  # Détection UEFI/BIOS
+  - name: Détecter le mode de démarrage (UEFI ou BIOS)
+    command: test -d /sys/firmware/efi
+    register: efi_check
+    ignore_errors: true
+
+  - name: Définir le mode de démarrage
+    set_fact:
+      boot_mode: "{{ 'uefi' if efi_check.rc == 0 else 'bios' }}"
+
+  # Détection de la partition EFI si UEFI
+  - name: Lister les partitions avec blkid
+    command: blkid
+    register: blkid_output
+    when: boot_mode == 'uefi'
+
+  - name: Détecter la partition EFI
+    set_fact:
+      efi_partition: "{{ item.split(':')[0] }}"
+    loop: "{{ blkid_output.stdout_lines }}"
+    when:
+      - boot_mode == 'uefi'
+      - "'EFI' in item or 'efi' in item"
+
+  - name: Vérifier que la partition EFI a bien été détectée
+    fail:
+      msg: "Impossible de détecter automatiquement la partition EFI. Vérifiez le partitionnement."
+    when:
+      - boot_mode == 'uefi'
+      - efi_partition is not defined
+
+  # Création du script grub-install.sh dans le chroot
+  - name: Créer script grub-install.sh dans le chroot
+    copy:
+      dest: /mnt/root/grub-install.sh
+      mode: '0755'
+      content: |
+        #!/bin/bash
+        set -e
+        {{ 'mkdir -p /boot/efi && mount ' + efi_partition + ' /boot/efi' if boot_mode == 'uefi' else '' }}
+        {{ 'grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB' if boot_mode == 'uefi' else 'grub-install --target=i386-pc ' + disk }}
+        grub-mkconfig -o /boot/grub/grub.cfg
+
+  # Installation des paquets grub/efibootmgr dans le chroot
+  - name: Installer paquets GRUB (dans le chroot)
+    command: arch-chroot /mnt pacman -Sy --noconfirm {{ 'grub efibootmgr' if boot_mode == 'uefi' else 'grub' }}
+
+  # Exécuter le script GRUB dans le chroot
+  - name: Exécuter grub-install.sh dans le chroot
+    command: arch-chroot /mnt /root/grub-install.sh
+
+  # Nettoyage du script temporaire
+  - name: Supprimer grub-install.sh
+    file:
+      path: /mnt/root/grub-install.sh
+      state: absent
+
+  # ─────────────────────────────────────────────────────────────
+  # ⚙️ Configuration dans le chroot
+  # ─────────────────────────────────────────────────────────────
+  - name: Configuration système dans chroot
+    block:
+      - name: Script de configuration dans chroot
+        copy:
+          dest: /mnt/root/chroot.sh
+          mode: '0755'
+          content: |
+            #!/bin/bash
+            ln -sf /usr/share/zoneinfo/{{ timezone }} /etc/localtime
+            hwclock --systohc
+
+            echo "{{ locale }} UTF-8" >> /etc/locale.gen
+            locale-gen
+            echo "LANG={{ locale }}" > /etc/locale.conf
+
+            echo "KEYMAP=fr-latin1" > /etc/vconsole.conf
+            echo "{{ hostname }}" > /etc/hostname
+
+            cat <<EOF > /etc/hosts
+            127.0.0.1 localhost
+            ::1       localhost
+            127.0.1.1 {{ hostname }}.localdomain {{ hostname }}
+            EOF
+
+            useradd -m -G wheel -s /bin/bash {{ user_name }}
+            echo "{{ user_name }}:{{ user_password }}" | chpasswd
+
+            echo "{{ user_name }} ALL=(ALL:ALL) ALL" >> /etc/sudoers.d/{{ user_name }}
+            chmod 440 /etc/sudoers.d/{{ user_name }}
+
+            echo "Defaults logfile=/var/log/sudo.log" >> /etc/sudoers
+
+            systemctl enable sshd
+            systemctl enable systemd-timesyncd
+            systemctl enable dhcpcd
+
+            sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin no/' /etc/ssh/sshd_config
+
+      - name: Exécution du script dans chroot
+        command: arch-chroot /mnt /root/chroot.sh
+
+  # ─────────────────────────────────────────────────────────────
+  # 🧼 Démontage propre
+  # ─────────────────────────────────────────────────────────────
+  - name: Désactivation de la swap
+    command: swapoff {{ disk }}3
+
+  - name: Démontage de /mnt
+    command: umount -R /mnt
+    ignore_errors: true
+
+  - name: Arrêt de la machine
+    command: systemctl poweroff
+    ignore_errors: true

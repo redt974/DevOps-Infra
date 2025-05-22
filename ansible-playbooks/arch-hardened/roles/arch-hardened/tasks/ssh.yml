@@ -1,0 +1,76 @@
+- name: Sauvegarde de la configuration SSH
+  copy:
+    src: /etc/ssh/sshd_config
+    dest: /etc/ssh/sshd_config.bak
+    remote_src: true
+
+- name: Configuration SSH avancée
+  copy:
+    dest: /etc/ssh/sshd_config
+    content: |
+      Port 22222
+      AddressFamily inet
+      ListenAddress 0.0.0.0
+
+      PermitRootLogin no
+      PasswordAuthentication no
+      PermitEmptyPasswords no
+      ChallengeResponseAuthentication yes
+      UsePAM yes
+      KbdInteractiveAuthentication yes
+
+      AuthenticationMethods publickey,keyboard-interactive
+      DenyUsers rescue
+
+      MaxAuthTries 1
+      LoginGraceTime 30
+
+      AllowTcpForwarding no
+      X11Forwarding no
+      HostbasedAuthentication no
+      IgnoreRhosts yes
+      PermitUserEnvironment no
+
+      ClientAliveInterval 90
+      ClientAliveCountMax 0
+      TCPKeepAlive no
+
+      Protocol 2
+      Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes256-ctr
+      MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com
+      KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org
+
+      Subsystem sftp /usr/lib/ssh/sftp-server
+
+- name: Vérification de la syntaxe SSH
+  command: sshd -t
+
+- name: Activation et redémarrage SSH
+  systemd:
+    name: sshd
+    enabled: yes
+    state: restarted
+
+- name: Génération de la clé SSH pour localadm
+  become_user: localadm
+  shell: |
+    mkdir -p ~/.ssh && chmod 700 ~/.ssh
+    ssh-keygen -t rsa -b 4096 -N '' -f ~/.ssh/id_rsa
+    cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+    chmod 600 ~/.ssh/authorized_keys
+  register: ssh_key
+  changed_when: false
+
+- name: Récupérer la clé SSH privée de localadm
+  fetch:
+    src: /home/localadm/.ssh/id_rsa
+    dest: /home/thib/.ssh/localadm_id_rsa
+    flat: yes
+  register: fetch_key
+
+- name: Afficher la clé privée récupérée
+  debug:
+    msg: |
+      ➡️  La clé privée de `localadm` a été récupérée et est stockée dans : {{ fetch_key.dest }}
+      💡 Sauvegarde-la dans le fichier `~/.ssh/id_rsa`, avec `chmod 600`.
+      Exemple : `ssh -i ~/.ssh/id_rsa -p 22222 {{ admin_user }}@<IP>`

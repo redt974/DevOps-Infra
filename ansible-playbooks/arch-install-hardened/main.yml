@@ -1,0 +1,47 @@
+- name: Installation Arch Linux (Hardened) à distance
+  hosts: arch-vm
+  become: true
+
+  vars_prompt:
+    - name: "disk"
+      prompt: "Nom du disque (ex: /dev/sda)"
+      default: "/dev/sda"
+      private: no
+
+    - name: "hostname"
+      prompt: "Nom de la machine (hostname)"
+      default: "archlinux"
+      private: no
+
+    - name: "locale"
+      prompt: "Locale système (ex: fr_FR.UTF-8)"
+      default: "fr_FR.UTF-8"
+      private: no
+
+    - name: "timezone"
+      prompt: "Fuseau horaire (ex: Europe/Paris)"
+      default: "Europe/Paris"
+      private: no
+
+    - name: "admin_user"
+      prompt: "Nom de l'utilisateur à créer"
+      default: "localadm"
+      private: no
+
+    - name: "admin_password"
+      prompt: "Mot de passe de cet utilisateur"
+      private: yes
+      confirm: true
+
+    - name: "rescue_user"
+      prompt: "Nom de l'utilisateur de secours"
+      default: "rescue"
+      private: no
+
+    - name: "rescue_password"
+      prompt: "Mot de passe de l'utilisateur rescue"
+      private: yes
+      confirm: true
+
+  roles:
+    - arch-install-hardened

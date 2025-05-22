@@ -1,0 +1,79 @@
+- name: Chroot - Configuration Système
+  copy:
+    dest: /mnt/root/chroot.sh
+    mode: '0755'
+    content: |
+      #!/bin/bash
+      set -e
+
+      echo "[*] Configuration de base"
+      ln -sf /usr/share/zoneinfo/{{ timezone }} /etc/localtime
+      hwclock --systohc
+      echo "{{ locale }} UTF-8" >> /etc/locale.gen
+      locale-gen
+      echo "LANG={{ locale }}" > /etc/locale.conf
+      echo "KEYMAP=fr-latin1" > /etc/vconsole.conf
+      echo "{{ hostname }}" > /etc/hostname
+
+      cat <<EOF > /etc/hosts
+      127.0.0.1 localhost
+      ::1       localhost
+      127.0.1.1 {{ hostname }}.localdomain {{ hostname }}
+      EOF
+
+      echo "[*] Création de l'utilisateur admin (sans mot de passe sudo)"
+      useradd -m -G wheel -s /bin/bash {{ admin_user }}
+      echo "{{ admin_user }}:{{ admin_password }}" | chpasswd
+
+      echo "[*] Création de l'utilisateur rescue (avec mot de passe sudo)"
+      useradd -m -G wheel -s /bin/bash {{ rescue_user }}
+      echo "{{ rescue_user }}:{{ rescue_password }}" | chpasswd
+
+      echo "[*] Configuration sudoers"
+      echo "{{ admin_user }} ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/{{ admin_user }}
+      echo "{{ rescue_user }} ALL=(ALL) ALL" > /etc/sudoers.d/{{ rescue_user }}
+      chmod 440 /etc/sudoers.d/{{ admin_user }} /etc/sudoers.d/{{ rescue_user }}
+      echo "Defaults logfile=/var/log/sudo.log" >> /etc/sudoers
+
+      echo "[*] Regénération de l'initramfs"
+      sed -i 's/^HOOKS=(.*)/HOOKS=(base udev autodetect modconf block filesystems keyboard fsck usr)/' /etc/mkinitcpio.conf
+      mkinitcpio -P
+
+      echo "[*] Création de fstab sécurisé"
+      cat <<FSTAB > /etc/fstab
+      /dev/sda2   /boot   vfat    defaults,nosuid,nodev,noexec     0  2
+      /dev/sda3   none    swap    sw                               0  0
+      /dev/sda4   /       ext4    defaults                         0  1
+      /dev/sda5   /var    ext4    defaults,nosuid,nodev,noexec     0  2
+      /dev/sda6   /usr    ext4    defaults,nodev                   0  2
+      /dev/sda7   /home   ext4    defaults,nosuid,nodev,noexec     0  2
+      tmpfs       /tmp    tmpfs   defaults,nosuid,nodev,noexec,size=512M  0  0
+      proc        /proc   proc    defaults,hidepid=2               0  0
+      FSTAB
+
+      mkdir -p /tmp
+      chmod 1777 /tmp
+
+      echo "[*] Activation des services essentiels"
+      systemctl enable sshd
+      systemctl enable systemd-timesyncd
+      systemctl enable dhcpcd
+
+      echo "[*] Sécurisation SSH"
+      sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin no/' /etc/ssh/sshd_config
+
+- name: Exécuter le script dans le chroot
+  command: arch-chroot /mnt /root/chroot.sh
+
+- name: Supprimer le script de chroot
+  file:
+    path: /mnt/root/chroot.sh
+    state: absent
+
+- name: Démontage de /mnt
+  command: umount -R /mnt
+  ignore_errors: true
+
+- name: Arrêt de la machine
+  command: systemctl poweroff
+  ignore_errors: true

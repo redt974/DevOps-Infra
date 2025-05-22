@@ -1,0 +1,36 @@
+- name: Monter les partitions
+  block:
+    - name: /boot
+      file:
+        path: /mnt/boot
+        state: directory
+    - name: Boot
+      mount:
+        src: "{{ disk }}2"
+        path: /mnt/boot
+        fstype: vfat
+        state: mounted
+    - name: /
+      mount:
+        src: "{{ disk }}4"
+        path: /mnt
+        fstype: ext4
+        state: mounted
+    - name: /var
+      mount:
+        src: "{{ disk }}5"
+        path: /mnt/var
+        fstype: ext4
+        state: mounted
+    - name: /usr
+      mount:
+        src: "{{ disk }}6"
+        path: /mnt/usr
+        fstype: ext4
+        state: mounted
+    - name: /home
+      mount:
+        src: "{{ disk }}7"
+        path: /mnt/home
+        fstype: ext4
+        state: mounted

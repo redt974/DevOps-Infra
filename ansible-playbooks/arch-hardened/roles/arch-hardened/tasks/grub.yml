@@ -1,0 +1,64 @@
+- name: Générer le hash PBKDF2 pour GRUB
+  command: bash -c "echo -e '{{ grub_password }}\n{{ grub_password }}' | grub-mkpasswd-pbkdf2"
+  register: grub_pbkdf2
+
+- name: Extraire le hash depuis la sortie
+  set_fact:
+    grub_hash: "{{ grub_pbkdf2.stdout | regex_search('grub.pbkdf2.sha512.*') }}"
+
+- name: Écriture de la config GRUB personnalisée avec hash
+  copy:
+    dest: /etc/grub.d/40_custom
+    content: |
+      #!/bin/sh
+      exec tail -n +3 $0
+
+      set superusers="{{ grub_user }}"
+      password_pbkdf2 {{ grub_user }} {{ grub_hash }}
+      export superusers
+    mode: '0755'
+
+- name: Ajouter --unrestricted à l’entrée GRUB "gnulinux-simple"
+  become: true
+  ansible.builtin.replace:
+    path: /etc/grub.d/10_linux
+    regexp: '^(.*menuentry )(?=(.*gnulinux-simple))'
+    replace: '\1--unrestricted '
+
+- name: Remontage de /boot en lecture-écriture
+  mount:
+    path: /boot
+    opts: rw
+    state: remounted
+
+- name: S'assurer que /boot/grub existe
+  file:
+    path: /boot/grub
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Génération de grub.cfg
+  command: grub-mkconfig -o /boot/grub/grub.cfg
+
+- name: Sécurisation des fichiers grub.d
+  file:
+    path: /etc/grub.d
+    recurse: yes
+    mode: '0700'
+
+- name: Sécurisation de /boot dans fstab
+  replace:
+    path: /etc/fstab
+    regexp: '(/boot\s+\S+\s+vfat\s+)defaults(\S*)'
+    replace: '\1defaults,nosuid,nodev,noexec,fmask=0177,dmask=0077\2'
+
+- name: Remontage de /boot en lecture seule
+  mount:
+    path: /boot
+    opts: ro
+    state: remounted
+
+- name: Rechargement de systemd
+  command: systemctl daemon-reexec

@@ -1,0 +1,16 @@
+- name: Formatage des partitions
+  block:
+    - name: /boot
+      command: mkfs.fat -F32 {{ disk }}2
+    - name: "[swap]"
+      command: mkswap {{ disk }}3
+    - name: Activer "[swap]"
+      command: swapon {{ disk }}3
+    - name: /
+      command: mkfs.ext4 {{ disk }}4
+    - name: /var
+      command: mkfs.ext4 {{ disk }}5
+    - name: /usr
+      command: mkfs.ext4 {{ disk }}6
+    - name: /home
+      command: mkfs.ext4 {{ disk }}7

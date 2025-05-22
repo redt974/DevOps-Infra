@@ -1,0 +1,108 @@
+- name: Créer le répertoire pour stocker les QR codes
+  file:
+    path: ~/qrcodes
+    state: directory
+    mode: '0755'
+
+- name: Installer Google Authenticator et utilitaires
+  pacman:
+    name:
+      - libpam-google-authenticator
+      - qrencode
+    state: present
+    update_cache: yes
+
+- name: Générer un secret MFA pour {{ admin_user }}
+  command: /usr/bin/google-authenticator -t -d -f -r 3 -R 30 -W -C
+  args:
+    creates: "/home/{{ admin_user }}/.google_authenticator"
+  become_user: "{{ admin_user }}"
+  register: admin_mfa_output
+
+- name: Extraire la clé secrète (admin)
+  set_fact:
+    admin_totp_key: >-
+      {{
+        admin_mfa_output.stdout_lines
+        | select('search', 'Your new secret key is')
+        | map('regex_replace', '^.*Your new secret key is: ', '')
+        | list
+        | first
+        | default('')
+      }}
+
+- name: Générer le QR code TOTP pour {{ admin_user }} et l'enregistrer en fichier PNG
+  command: >
+    qrencode -o /tmp/{{ admin_user }}_mfa_qr.png -s 10
+    "otpauth://totp/{{ admin_user }}@{{ inventory_hostname }}?secret={{ admin_totp_key }}&issuer=ArchLinux"
+  register: qr_admin
+  changed_when: false
+
+- name: Copier le QR code pour {{ admin_user }} vers la machine hôte
+  fetch:
+    src: /tmp/{{ admin_user }}_mfa_qr.png
+    dest: ~/qrcodes/{{ admin_user }}_mfa_qr.png
+    flat: yes
+
+- name: Afficher l'emplacement du QR code pour {{ admin_user }}
+  debug:
+    msg: "QR code pour {{ admin_user }} enregistré dans ~/qrcodes/{{ admin_user }}_mfa_qr.png"
+
+- name: Générer un secret MFA pour {{ rescue_user }}
+  command: /usr/bin/google-authenticator -t -d -f -r 3 -R 30 -W -C
+  args:
+    creates: "/home/{{ rescue_user }}/.google_authenticator"
+  become_user: "{{ rescue_user }}"
+  register: rescue_mfa_output
+
+- name: Extraire la clé secrète (rescue)
+  set_fact:
+    rescue_totp_key: >-
+      {{
+        rescue_mfa_output.stdout_lines
+        | select('search', 'Your new secret key is')
+        | map('regex_replace', '^.*Your new secret key is: ', '')
+        | list
+        | first
+        | default('')
+      }}
+
+- name: Générer le QR code TOTP pour {{ rescue_user }} et l'enregistrer en fichier PNG
+  command: >
+    qrencode -o /tmp/{{ rescue_user }}_mfa_qr.png -s 10
+    "otpauth://totp/{{ rescue_user }}@{{ inventory_hostname }}?secret={{ rescue_totp_key }}&issuer=ArchLinux"
+  register: qr_rescue
+  changed_when: false
+
+- name: Copier le QR code pour {{ rescue_user }} vers la machine hôte
+  fetch:
+    src: /tmp/{{ rescue_user }}_mfa_qr.png
+    dest: ~/qrcodes/{{ rescue_user }}_mfa_qr.png
+    flat: yes
+
+- name: Afficher l'emplacement du QR code pour {{ rescue_user }}
+  debug:
+    msg: "QR code pour {{ rescue_user }} enregistré dans ~/qrcodes/{{ rescue_user }}_mfa_qr.png"
+
+- name: Mise à jour des règles PAM pour SSH et SUDO
+  block:
+    - name: Activer Google Authenticator dans /etc/pam.d/sshd
+      lineinfile:
+        path: /etc/pam.d/sshd
+        line: "auth required pam_google_authenticator.so"
+        state: present
+
+    - name: Activer Google Authenticator dans /etc/pam.d/sudo
+      lineinfile:
+        path: /etc/pam.d/sudo
+        line: "auth required pam_google_authenticator.so"
+        state: present
+
+- name: Durcir sudo avec journalisation et expiration immédiate
+  blockinfile:
+    path: /etc/sudoers
+    block: |
+      Defaults env_reset
+      Defaults timestamp_timeout=0
+      Defaults logfile="/var/log/sudo.log"
+    validate: 'visudo -cf %s'

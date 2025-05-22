@@ -1,0 +1,27 @@
+- name: Nettoyage des anciennes partitions
+  shell: |
+    for PART in $(lsblk -nr -o NAME {{ disk }} | grep -E "^$(basename {{ disk }})p?[0-9]+$"); do
+      wipefs --all --force "/dev/$PART"
+    done
+  args:
+    executable: /bin/bash
+
+- name: Création de la table GPT
+  shell: parted -s {{ disk }} mklabel gpt
+  args:
+    executable: /bin/bash
+
+- name: Création des partitions
+  shell: |
+    parted -s {{ disk }} mkpart primary 1MiB 2MiB
+    parted -s {{ disk }} set 1 bios_grub on
+    parted -s {{ disk }} mkpart primary fat32 2MiB 514MiB
+    parted -s {{ disk }} set 2 boot on
+    parted -s {{ disk }} mkpart primary linux-swap 514MiB 2562MiB
+    parted -s {{ disk }} mkpart primary ext4 2562MiB 7682MiB
+    parted -s {{ disk }} mkpart primary ext4 7682MiB 11778MiB
+    parted -s {{ disk }} mkpart primary ext4 11778MiB 15874MiB
+    parted -s {{ disk }} mkpart primary ext4 15874MiB 100%
+  ignore_errors: yes
+  args:
+    executable: /bin/bash

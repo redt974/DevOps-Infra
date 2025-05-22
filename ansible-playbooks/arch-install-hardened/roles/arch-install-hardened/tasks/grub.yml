@@ -1,0 +1,56 @@
+# Détection UEFI/BIOS
+- name: Détecter le mode de démarrage (UEFI ou BIOS)
+  command: test -d /sys/firmware/efi
+  register: efi_check
+  ignore_errors: true
+
+- name: Définir le mode de démarrage
+  set_fact:
+    boot_mode: "{{ 'uefi' if efi_check.rc == 0 else 'bios' }}"
+
+# Détection de la partition EFI si UEFI
+- name: Lister les partitions avec blkid
+  command: blkid
+  register: blkid_output
+  when: boot_mode == 'uefi'
+
+- name: Détecter la partition EFI
+  set_fact:
+    efi_partition: "{{ item.split(':')[0] }}"
+  loop: "{{ blkid_output.stdout_lines }}"
+  when:
+    - boot_mode == 'uefi'
+    - "'EFI' in item or 'efi' in item"
+
+- name: Vérifier que la partition EFI a bien été détectée
+  fail:
+    msg: "Impossible de détecter automatiquement la partition EFI. Vérifiez le partitionnement."
+  when:
+    - boot_mode == 'uefi'
+    - efi_partition is not defined
+
+# Création du script grub-install.sh dans le chroot
+- name: Créer script grub-install.sh dans le chroot
+  copy:
+    dest: /mnt/root/grub-install.sh
+    mode: '0755'
+    content: |
+      #!/bin/bash
+      set -e
+      {{ 'mkdir -p /boot/efi && mount ' + efi_partition + ' /boot/efi' if boot_mode == 'uefi' else '' }}
+      {{ 'grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB' if boot_mode == 'uefi' else 'grub-install --target=i386-pc ' + disk }}
+      grub-mkconfig -o /boot/grub/grub.cfg
+
+# Installation des paquets grub/efibootmgr dans le chroot
+- name: Installer paquets GRUB (dans le chroot)
+  command: arch-chroot /mnt pacman -Sy --noconfirm {{ 'grub efibootmgr' if boot_mode == 'uefi' else 'grub' }}
+
+# Exécuter le script GRUB dans le chroot
+- name: Exécuter grub-install.sh dans le chroot
+  command: arch-chroot /mnt /root/grub-install.sh
+
+# Nettoyage du script temporaire
+- name: Supprimer grub-install.sh
+  file:
+    path: /mnt/root/grub-install.sh
+    state: absent

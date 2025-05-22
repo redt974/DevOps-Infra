@@ -1,0 +1,6 @@
+- name: Installer le système de base
+  command: >
+    pacstrap /mnt base base-devel linux linux-firmware vim sudo openssh grub dhcpcd --noconfirm
+
+- name: Générer fstab
+  command: genfstab -U /mnt >> /mnt/etc/fstab

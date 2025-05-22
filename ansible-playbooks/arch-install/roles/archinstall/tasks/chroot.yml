@@ -1,0 +1,32 @@
+- name: Script de configuration dans chroot
+  copy:
+    dest: /mnt/root/chroot.sh
+    mode: '0755'
+    content: |
+      #!/bin/bash
+      ln -sf /usr/share/zoneinfo/{{ timezone }} /etc/localtime
+      hwclock --systohc
+      echo "{{ locale }} UTF-8" >> /etc/locale.gen
+      locale-gen
+      echo "LANG={{ locale }}" > /etc/locale.conf
+      echo "KEYMAP=fr-latin1" > /etc/vconsole.conf
+      echo "{{ hostname }}" > /etc/hostname
+      cat <<EOF > /etc/hosts
+127.0.0.1 localhost
+::1       localhost
+127.0.1.1 {{ hostname }}.localdomain {{ hostname }}
+EOF
+      useradd -m -G wheel -s /bin/bash {{ user_name }}
+      echo "{{ user_name }}:{{ user_password }}" | chpasswd
+      echo "{{ user_name }} ALL=(ALL) ALL" >> /etc/sudoers.d/{{ user_name }}
+      chmod 440 /etc/sudoers.d/{{ user_name }}
+      echo "Defaults logfile=/var/log/sudo.log" >> /etc/sudoers
+      grub-install --target=i386-pc {{ disk }}
+      grub-mkconfig -o /boot/grub/grub.cfg
+      systemctl enable sshd
+      systemctl enable systemd-timesyncd
+      systemctl enable dhcpcd
+      sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin no/' /etc/ssh/sshd_config
+
+- name: Exécuter le script
+  command: arch-chroot /mnt /root/chroot.sh
