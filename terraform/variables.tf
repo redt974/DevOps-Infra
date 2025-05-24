@@ -1,3 +1,26 @@
+variable "ssh_public_key" {
+  description = "Contenu de la clé publique SSH pour cloud-init"
+  type        = string
+}
+
+variable "ssh_private_key" {
+  description = "Contenu de la clé privée SSH pour provisionnement ou debug (non recommandé en prod)"
+  type        = string
+  sensitive   = true
+}
+
+variable "ssh_user" {
+  description = "Nom d'utilisateur pour SSH"
+  type        = string
+  default    = "root"
+}
+
+variable "ssh_port" {
+  description = "Port SSH"
+  type        = number
+  default     = 22
+}
+
 variable "proxmox_url" { 
   description = "URL de l'API Proxmox"
   type        = string

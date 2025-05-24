@@ -1,0 +1,11 @@
+variable "vm_hostname" {}
+variable "domain" {}
+variable "template_tag" {}
+variable "target_node" {}
+variable "onboot" {}
+variable "memory" {}
+variable "cores" {}
+variable "sockets" {}
+variable "vm_tags" {}
+variable "proxmox_url" {}
+variable "proxmox_api_token" {}

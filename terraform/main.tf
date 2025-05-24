@@ -19,121 +19,50 @@ provider "proxmox" {
   insecure = false
 }
 
-data "proxmox_virtual_environment_vms" "template" {
-  node_name = var.target_node
-  tags      = [var.template_tag, "ubuntu"]
+module "ubuntu_vm" {
+  source = "./modules/vm-ubuntu"
+
+  vm_hostname         = var.vm_hostname
+  domain              = var.domain
+  template_tag        = var.template_tag
+  target_node         = var.target_node
+  onboot              = var.onboot
+  memory              = var.memory
+  cores               = var.cores
+  sockets             = var.sockets
+  vm_tags             = var.vm_tags
+  proxmox_url         = var.proxmox_url
+  proxmox_api_token   = var.proxmox_api_token
 }
 
-resource "proxmox_virtual_environment_file" "cloud_user_config" {
-  content_type = "snippets"
-  datastore_id = "local"
-  node_name    = var.target_node
+# module "debian_vm" {
+#   source = "./modules/vm-debian"
 
-  source_raw {
-    data = templatefile("cloud-init/user_data",
-      {
-        local_hostname = var.vm_hostname
-        domain         = var.domain
-      }
-    )
-    file_name = "${var.vm_hostname}.${var.domain}-ci-user.yml"
-  }
-}
+#   vm_hostname         = var.vm_hostname
+#   domain              = var.domain
+#   template_tag        = var.template_tag
+#   target_node         = var.target_node
+#   onboot              = var.onboot
+#   memory              = var.memory
+#   cores               = var.cores
+#   sockets             = var.sockets
+#   vm_tags             = var.vm_tags
+#   proxmox_url         = var.proxmox_url
+#   proxmox_api_token   = var.proxmox_api_token
+# }
 
-resource "proxmox_virtual_environment_file" "cloud_meta_config" {
-  content_type = "snippets"
-  datastore_id = "local"
-  node_name    = var.target_node
+# module "arch_vm" {
+#   source = "./modules/vm-arch"
 
-  source_raw {
-    data = templatefile("cloud-init/meta_data",
-      {
-        instance_id    = sha1(var.vm_hostname)
-        local_hostname = var.vm_hostname
-      }
-    )
-
-    file_name = "${var.vm_hostname}.${var.domain}-ci-meta_data.yml"
-  }
-}
-
-resource "proxmox_virtual_environment_vm" "vm" {
-  name      = "${var.vm_hostname}.${var.domain}"
-  node_name = var.target_node
-
-  on_boot = var.onboot
-
-  boot_order = ["scsi0", "net0"]
-
-  agent {
-    enabled = false
-  }
-
-  tags = var.vm_tags
-
-  cpu {
-    type    = "x86-64-v2-AES"
-    cores   = var.cores
-    sockets = var.sockets
-    flags   = []
-  }
-
-  memory {
-    dedicated = var.memory
-  }
-
-  network_device {
-    bridge = "vmbr0"
-    model  = "virtio"
-  }
-
-  # Ignore changes to the network
-  ## MAC address is generated on every apply, causing
-  ## TF to think this needs to be rebuilt on every apply
-  lifecycle {
-    ignore_changes = [
-      network_device,
-    ]
-  }
-
-  scsi_hardware = "virtio-scsi-pci"
-
-  # disk {
-  #   interface    = "scsi0"
-  #   iothread     = true
-  #   datastore_id = var.disk.storage
-  #   size         = var.disk.size
-  #   file_format  = "raw"
-  #   discard      = "ignore"
-  # }
-
-  # dynamic "disk" {
-  #   for_each = var.additionnal_disks
-  #   content {
-  #     interface    = "scsi${1 + disk.key}"
-  #     iothread     = true
-  #     datastore_id = disk.value.storage
-  #     size         = disk.value.size
-  #     discard      = "ignore"
-  #     file_format  = "raw"
-  #   }
-  # }
-
-  clone {
-    vm_id = data.proxmox_virtual_environment_vms.template.vms[0].vm_id
-  }
-
-  initialization {
-    ip_config {
-      ipv4 {
-        address = "dhcp"
-      }
-    }
-
-    datastore_id      = "local-lvm"
-    interface         = "ide2"
-    user_data_file_id = proxmox_virtual_environment_file.cloud_user_config.id
-    meta_data_file_id = proxmox_virtual_environment_file.cloud_meta_config.id
-  }
-
-}
+#   vm_hostname         = var.vm_hostname
+#   domain              = var.domain
+#   template_tag        = var.template_tag
+#   target_node         = var.target_node
+#   onboot              = var.onboot
+#   memory              = var.memory
+#   cores               = var.cores
+#   sockets             = var.sockets
+#   vm_tags             = var.vm_tags
+#   proxmox_url         = var.proxmox_url
+#   proxmox_api_token   = var.proxmox_api_token
+# }
