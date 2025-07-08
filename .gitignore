@@ -61,3 +61,5 @@ terraform/cloud-init/user_data
 *.vsix
 
 .env 
+
+default-cloud-init/

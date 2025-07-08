@@ -71,9 +71,6 @@ wget https://enterprise.proxmox.com/debian/proxmox-release-bookworm.gpg -O /etc/
 apt update -y && apt full-upgrade -y
 apt install -y proxmox-ve ksm-control-daemon locales-all chrony libguestfs-tools sudo vim lsb-release tree
 
-# 🔧 Nettoyage de noyaux inutiles
-apt remove -y linux-image-amd64 'linux-image-6.1*' os-prober
-
 # ================================================
 # 🔐 3. Préparation accès API sécurisé pour Terraform
 # ================================================
@@ -88,8 +85,54 @@ pveum user token add terraform-user@pve terraform-token --expire 0 --privsep 0 -
 
 echo "✅ Utilisateur terraform@pve et token créés pour l'accès API Terraform"
 
+# 🔧 Nettoyage de noyaux inutiles
+apt remove -y linux-image-amd64 'linux-image-6.1*' os-prober
+
+echo "🛠️ Activation du type 'snippets' pour le datastore 'local'..."
+
+# Ajoute 'snippets' comme type de contenu autorisé sur 'local'
+pvesm set local --content iso,vztmpl,backup,images,rootdir,snippets
+
+# Crée le dossier des snippets s’il n’existe pas
+mkdir -p /var/lib/vz/snippets
+
+echo "✅ Le type 'snippets' est maintenant activé pour 'local'."
+
 # ================================================
-# 🧱 4. (Optionnel) Création d’un template Cloud-Init
+# 👤 4. Création d'un utilisateur admin non-root
+# ================================================
+
+read -p "Nom d'utilisateur : " USER
+echo "[*] Saisie du mot de passe pour $USER"
+read -s -p "Mot de passe : " PASSWORD; echo
+read -s -p "Confirme le mot de passe : " PASSWORD_CONFIRM; echo
+[[ "$PASSWORD" != "$PASSWORD_CONFIRM" ]] && { echo "❌ Les mots de passe ne correspondent pas."; exit 1; }
+
+echo "👤 Création de l'utilisateur '$USER'..."
+useradd -m -s /bin/bash "$USER"
+echo "$USER:$PASSWORD" | chpasswd
+usermod -aG sudo "$USER"
+
+# 🔒 Désactiver le mot de passe de root via shadow
+echo "🚫 Désactivation stricte de l'accès root..."
+sed -i 's/^root:[^:]*:/root:!*:/' /etc/shadow
+
+# 🔐 Autoriser login SSH avec clé (ou mot de passe temporairement)
+mkdir -p /home/$USER/.ssh
+cp /root/.ssh/authorized_keys /home/$USER/.ssh/authorized_keys 2>/dev/null || true
+chown -R $USER:$USER /home/$USER/.ssh
+chmod 700 /home/$USER/.ssh
+chmod 600 /home/$USER/.ssh/authorized_keys
+
+# 🔒 Désactivation du login SSH root
+echo "🚫 Désactivation du login SSH root..."
+sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
+systemctl restart sshd
+
+echo "✅ Utilisateur '$USER' créé et root désactivé pour SSH."
+
+# ================================================
+# 🧱 5. (Optionnel) Création d’un template Cloud-Init
 # ================================================
 
 echo "ℹ️ Tu peux maintenant créer un template cloud-init avec Debian ou Ubuntu."
