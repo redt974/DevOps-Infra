@@ -43,24 +43,6 @@ scp "$SERVER_KEY" root@"$PVE_IP":/etc/pve/local/pve-ssl.key
 echo "🔄 Redémarrage du service pveproxy sur Proxmox..."
 ssh root@"$PVE_IP" systemctl restart pveproxy
 
-# Installer la CA dans Firefox (Debian)
-FIREFOX_PROFILE_PATH=$(find ~/.mozilla/firefox -maxdepth 1 -type d -name "*.default*" | head -n 1)
-
-sudo apt-get install -y libnss3-tools
-
-if [ -n "$FIREFOX_PROFILE_PATH" ]; then
-    echo "🦊 Importation de la CA dans Firefox : $FIREFOX_PROFILE_PATH"
-
-    certutil -A -n "Proxmox Local CA" \
-        -t "CT,C,C" \
-        -i "$CA_CERT" \
-        -d sql:"$FIREFOX_PROFILE_PATH"
-
-    echo "✅ CA ajoutée à Firefox avec succès. Redémarre Firefox."
-else
-    echo "⚠️ Impossible de détecter le profil Firefox. Fichier CA généré : $CA_CERT"
-fi
-
 echo "✅ Configuration terminée avec succès !"
 echo "📁 Les certificats sont disponibles dans le dossier : $(pwd)"
 echo "📜 Le certificat CA est : $CA_CERT est à mettre manuellement dans Firefox :"

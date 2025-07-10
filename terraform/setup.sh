@@ -52,7 +52,7 @@ ssh-add "$TF_SSH_KEY"
 
 # 6. Test SSH
 echo "🧪 Test de la connexion SSH à Proxmox..."
-ssh -o BatchMode=yes -i "$TF_SSH_KEY" "$PROXMOX_USER@$PROXMOX_HOST" "echo '✅ Connexion réussie à Proxmox'" || {
+ssh -o BatchMode=yes -i "$TF_SSH_KEY" "$PROXMOX_USER@$PROXMOX_HOST" "echo ✅ Connexion réussie à Proxmox" || {
   echo "❌ Connexion SSH échouée. Vérifiez les étapes précédentes."
   exit 1
 }
@@ -72,4 +72,4 @@ echo "🚀 Lancement de Terraform..."
 terraform init
 terraform validate
 
-echo "✅ Setup terminé. Vous pouvez lancer terraform apply si tout est OK.
+echo "✅ Setup terminé. Vous pouvez lancer terraform apply si tout est OK."

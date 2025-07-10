@@ -13,6 +13,7 @@ fi
 
 # Variables d'environnement
 SSH_KEY_PATH="$HOME/.ssh/id_rsa_terraform"
+VM_SSH_KEY_PATH="$HOME/.ssh/vm-access_id_rsa"
 SSH_USER=root
 SSH_PORT=22
 
@@ -47,17 +48,41 @@ else
   exit 1
 fi
 
-# Affichage de la sortie (adapte à ton output réel)
-echo "📡 IP publique (si définie dans outputs) :"
-terraform output -raw instance_public_ip 2>/dev/null || echo "Pas de sortie 'instance_public_ip' définie."
+VM_ID=$(terraform output -raw vm_id 2>/dev/null)
+VM_NAME=$(terraform output -raw vm_name 2>/dev/null)
+VM_IP=$(terraform output -json vm_ip 2>/dev/null | jq -r '.[] | select(test("^192\\.168\\."))' | head -n1)
+# Récupération des tag OS de la VM
+VM_TAGS_JSON=$(terraform output -json vm_tags)
+VM_OS_TAG=$(echo "$VM_TAGS_JSON" | jq -r '.[1]')
 
-# Nettoyage de l'agent SSH
-echo "🧹 Nettoyage de l'agent SSH..."
+
+if [[ -z "$VM_IP" ]]; then
+  echo "🔎 IP non trouvée dans Terraform, tentative via qm + QEMU Guest Agent..."
+
+  if command -v ssh >/dev/null && command -v jq >/dev/null; then
+    IP=$(ssh -i "$SSH_KEY_PATH" -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
+      "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin sudo -n /usr/sbin/qm guest cmd $VM_ID network-get-interfaces" 2>/dev/null \
+      | jq -r '.[] | select(.name != "lo") | .["ip-addresses"][]?.ip-address' \
+      | grep -E '^192\.168\.' | head -n1)
+
+    if [[ -n "$IP" ]]; then
+      VM_IP="$IP"
+      echo "✅ IP détectée via qm: $VM_IP"
+    else
+      echo "❌ Impossible de récupérer l'IP via QEMU Guest Agent."
+    fi
+  else
+    echo "❌ ssh ou jq introuvables localement."
+  fi
+else
+  echo "✅ IP récupérée depuis Terraform : $VM_IP"
+fi
+
+if [[ -n "$VM_IP" ]]; then
+  echo "🔗 Connectez-vous à la VM ($VM_NAME) :"
+  echo "ssh -i $VM_SSH_KEY_PATH $VM_OS_TAG@$VM_IP"
+fi
+
+# Nettoyage ssh-agent
 ssh-add -D
-echo "Agent SSH nettoyé."
-
-# Affichage de la commande SSH
-echo "🔗 Pour vous connecter, utilisez la commande suivante :"
-echo "ssh -i $SSH_KEY_PATH $SSH_USER@$(terraform output -raw instance_public_ip)"
-echp "OU" 
-echo "ssh -i $HOME/.ssh/vm-access_id_rsa ubuntu@192.168.10.x" # Remplacez par l'IP ou le nom d'hôte correct
+echo "✅ Agent SSH nettoyé."

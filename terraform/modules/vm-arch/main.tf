@@ -9,7 +9,7 @@ terraform {
 
 data "proxmox_virtual_environment_vms" "template" {
   node_name = var.target_node
-  tags      = [var.template_tag, "arch"]
+  tags      = [var.template_tag]
 }
 
 resource "proxmox_virtual_environment_file" "cloud_user_config" {
@@ -54,7 +54,7 @@ resource "proxmox_virtual_environment_vm" "vm" {
   boot_order = ["scsi0", "net0"]
 
   agent {
-    enabled = false
+    enabled = true
   }
 
   tags = var.vm_tags

@@ -1,7 +1,7 @@
 .PHONY: init plan apply destroy fmt validate
 
 init:
-	terraform init
+	./setup.sh
 
 plan:
 	terraform plan

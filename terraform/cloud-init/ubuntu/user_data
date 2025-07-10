@@ -5,10 +5,17 @@ fqdn: ${local_hostname}.${domain}
 manage_etc_hosts: true
 package_update: true
 package_upgrade: true
+packages:
+  - qemu-guest-agent
+  - sudo
+  - openssh-server
+runcmd:
+  - systemctl enable qemu-guest-agent
+  - systemctl start qemu-guest-agent
 users:
   - default
   - name: ubuntu
     sudo: ALL=(ALL) NOPASSWD:ALL
     ssh_authorized_keys:
-      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC4Tmufc4a02dpw/ae+Sd0G1avavArb2a7ZHRhjvUPb/EypVrhCn9IRk9GTCn7tNcRXSg5u7fzaC7I+shW2Vc139VMTLoT1VsAI9rmKWg0R1ec38jGoLMdBvuep+5pIkgSkGyrj/cCfmzrHRyXS9TnTwGNn9VD1McQov27/IAC7ekDCOLLjQMtU8qGJMhyqorpxohKcOvT25572xa97xnpYxtHZ8OuvpIZsnW87dx3/W2BJgp2fGwyYIsph9OS+pk2oRHnTB4veozUiYnecdS0Mi+tw+8j95izT4bn/MBT/MeoOQv9xBJrg3Oo8sVpBMOxAXs1rJtSIqPT6SinyvhqXfDlvDxF4wbokPVRS13LR1Vc1I/b61ZPdiLa61OxarHzRY3JzK1NYdZcA3dd1JyKT7JNVVja8m27nVAbeRLSc18p6wYNI7c7ex0LhcnfpeaSdGhHRbOldCct0A/8vcsRLTe4IKRcgQ1shT6H+93AQyg7N7B2g0X1d4yIAmc6RiicZYfgosTfd8RvOhhAMbFaNWsMTC9xdzUZpXgPoz15PI0490XTfsj4rXCT/+g4kRuvrZcjEDqctcfU+C3wKkvMIJXd4OZPgrjJAANnSc+KRUcQmAEHB/eKi79TIhvg3mQSl5AWQj4M8RluOarM99QrIU5wmhJsKEXEttPeIcKTHUQ== vm-access
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC7rAzAlCQ4CzLhAOjxD9uphaK2AZXsqGndM/+VMyjUMCT3/tinuzWSdv+6MZKP5bl4S54+V0LpUNlfX7ZQV8fagOmwa643TCQSepCAemypEG2omdGxhevzQj0imRL2YnaTyhA70I7Z1pUbj9NITB5mC0IlmUEIhEW4WfX65UXqdGJbn8IKXdNA30gfMSsvhJcvwbddbyO0TPxkbZW9lugcgo+nq0U0Ze7GwcDbApUx2RtA6T6Ud1bsTP3moSN6p7bVt5dOb0tJu3PUqOfwRw22+S5dQTmqI5mYiQUxf0guu6Bj0hMCkmSnELU5qwAYFvuzowJZ9lAOx/ue0XR647xtdUJFJvdtIhunaPoBYLJ0ki4p0Ss/3n+kN9yUNM1973SJAdOXzwYjB23ZXbHRp/aE4srfT7eg/NONWfN949O2IscFulNLXdUH0rnzGBSEdyZdg2+ljf+KiA+wRq8RVF75OGqX1axcvTxePQUZt8tB999PBL81x8eJnALl2obANL8tDoX5R6LCL/VdydiDsJ4UHJaw9dscOWXtajrIwgXxtEAuvqG9yBeCPOfFWZ+txLGeKjOYbYycLnoE05CM+we33rprZZj5/OBkKm0AxZAqMGvHuZjw3LT0JZ//fenH5/XK2VuIMolZ1PUmveTQMwzCtceb8uicaLgBwNU6c9LveQ== vm-access
 ssh_pwauth: true ## This line enables ssh password authentication

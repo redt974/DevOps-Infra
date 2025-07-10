@@ -17,3 +17,7 @@ output "vm_tags" {
   description = "Tags associés à la VM"
   value       = proxmox_virtual_environment_vm.vm.tags
 }
+
+output "vm_ip" {
+  value = flatten(proxmox_virtual_environment_vm.vm.ipv4_addresses)
+}

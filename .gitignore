@@ -44,7 +44,8 @@ terraform.rc
 .terraform.lock.hcl
 
 # Cloud-init
-terraform/cloud-init/user_data
+terraform/cloud-init/
+terraform/default-cloud-init/
 
 # VS Code
 .vscode/
@@ -60,6 +61,4 @@ terraform/cloud-init/user_data
 # Built Visual Studio Code Extensions
 *.vsix
 
-.env 
-
-default-cloud-init/
+terraform/.env

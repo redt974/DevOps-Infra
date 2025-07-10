@@ -13,10 +13,10 @@ provider "proxmox" {
 
   ssh {
     agent    = true
-    username = "root"
+    username = var.ssh_user
   }
 
-  insecure = false
+  insecure = true
 }
 
 module "ubuntu_vm" {
@@ -30,7 +30,7 @@ module "ubuntu_vm" {
   memory              = var.memory
   cores               = var.cores
   sockets             = var.sockets
-  vm_tags             = var.vm_tags
+  vm_tags             = concat(var.vm_tags, ["ubuntu"])
   proxmox_url         = var.proxmox_url
   proxmox_api_token   = var.proxmox_api_token
 }
@@ -46,7 +46,7 @@ module "ubuntu_vm" {
 #   memory              = var.memory
 #   cores               = var.cores
 #   sockets             = var.sockets
-#   vm_tags             = var.vm_tags
+#   vm_tags             = concat(var.vm_tags, ["debian"])
 #   proxmox_url         = var.proxmox_url
 #   proxmox_api_token   = var.proxmox_api_token
 # }
@@ -62,7 +62,7 @@ module "ubuntu_vm" {
 #   memory              = var.memory
 #   cores               = var.cores
 #   sockets             = var.sockets
-#   vm_tags             = var.vm_tags
+#   vm_tags             = concat(var.vm_tags, ["arch"])
 #   proxmox_url         = var.proxmox_url
 #   proxmox_api_token   = var.proxmox_api_token
 # }

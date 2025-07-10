@@ -7,8 +7,6 @@ set -u  # Erreur si variable non définie
 IP_PROXMOX="192.168.10.180"
 CN_PROXMOX="proxmox.local"
 
-passwd
-
 # ================================================
 # ⚙️ 1. Configuration système et réseau
 # ================================================
@@ -38,14 +36,6 @@ source /etc/network/interfaces.d/*
 
 auto lo
 iface lo inet loopback
-
-auto ens33
-iface ens33 inet dhcp
-        dns-nameserver 1.1.1.1
-        dns-nameserver 8.8.8.8
-        pre-up sleep 2
-
-iface ens33 inet manual
 
 auto vmbr0
 iface vmbr0 inet static
@@ -79,7 +69,7 @@ apt install -y proxmox-ve ksm-control-daemon locales-all chrony libguestfs-tools
 
 echo "ℹ️ Création de l'utilisateur terraform@pve et du token terraform-token pour l'accès API."
 pveum role add TerraformProv -privs "Datastore.Allocate Datastore.AllocateSpace Datastore.Audit Pool.Allocate Sys.Audit Sys.Console Sys.Modify VM.Allocate VM.Audit VM.Clone VM.Config.CDROM VM.Config.Cloudinit VM.Config.CPU VM.Config.Disk VM.Config.HWType VM.Config.Memory VM.Config.Network VM.Config.Options VM.Console VM.Migrate VM.Monitor VM.PowerMgmt SDN.Use"
-pveum user add terraform-user@pve --comment "Terraform user" --password password
+pveum user add terraform-user@pve --comment "Terraform user" --password password 
 pveum aclmod / -user terraform-user@pve -role TerraformProv
 pveum user token add terraform-user@pve terraform-token --expire 0 --privsep 0 --comment "Token for Terraform"
 
@@ -113,9 +103,8 @@ useradd -m -s /bin/bash "$USER"
 echo "$USER:$PASSWORD" | chpasswd
 usermod -aG sudo "$USER"
 
-# 🔒 Désactiver le mot de passe de root via shadow
-echo "🚫 Désactivation stricte de l'accès root..."
-sed -i 's/^root:[^:]*:/root:!*:/' /etc/shadow
+pveum user add $USER@pam
+pveum aclmod / -user $USER@pam -role PVEAdmin
 
 # 🔐 Autoriser login SSH avec clé (ou mot de passe temporairement)
 mkdir -p /home/$USER/.ssh
@@ -123,11 +112,6 @@ cp /root/.ssh/authorized_keys /home/$USER/.ssh/authorized_keys 2>/dev/null || tr
 chown -R $USER:$USER /home/$USER/.ssh
 chmod 700 /home/$USER/.ssh
 chmod 600 /home/$USER/.ssh/authorized_keys
-
-# 🔒 Désactivation du login SSH root
-echo "🚫 Désactivation du login SSH root..."
-sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
-systemctl restart sshd
 
 echo "✅ Utilisateur '$USER' créé et root désactivé pour SSH."
 
@@ -189,4 +173,5 @@ qm template 1000
 
 echo "✅ Template Cloud-Init créé avec succès !"
 
+read -p "Appuie sur Entrée pour redémarrer..." _
 reboot
