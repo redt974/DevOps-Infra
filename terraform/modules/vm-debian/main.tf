@@ -18,7 +18,7 @@ resource "proxmox_virtual_environment_file" "cloud_user_config" {
   node_name    = var.target_node
 
   source_raw {
-    data = templatefile("${path.module}/../../cloud-init/debian/user_data",
+    data = templatefile("${path.module}/../../cloud-init/${var.vm_hostname}.${var.domain}/user_data.yml",
       {
         local_hostname = var.vm_hostname
         domain         = var.domain
@@ -34,7 +34,7 @@ resource "proxmox_virtual_environment_file" "cloud_meta_config" {
   node_name    = var.target_node
 
   source_raw {
-    data = templatefile("${path.module}/../../cloud-init/debian/meta_data",
+    data = templatefile("${path.module}/../../cloud-init/${var.vm_hostname}.${var.domain}/meta_data.yml",
       {
         instance_id    = sha1(var.vm_hostname)
         local_hostname = var.vm_hostname
@@ -43,6 +43,13 @@ resource "proxmox_virtual_environment_file" "cloud_meta_config" {
 
     file_name = "${var.vm_hostname}.${var.domain}-ci-meta_data.yml"
   }
+}
+
+locals {
+  template_vm = [
+    for vm in data.proxmox_virtual_environment_vms.template.vms :
+    vm if can(regex(lower(var.vm_os), lower(vm.name)))
+  ][0]
 }
 
 resource "proxmox_virtual_environment_vm" "vm" {
@@ -108,7 +115,7 @@ resource "proxmox_virtual_environment_vm" "vm" {
   # }
 
   clone {
-    vm_id = data.proxmox_virtual_environment_vms.template.vms[0].vm_id
+    vm_id = local.template_vm.vm_id
   }
 
   initialization {

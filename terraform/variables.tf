@@ -93,13 +93,6 @@ variable "memory" {
   default     = 2048
 }
 
-variable "vm_user" {
-  description = "User"
-  type        = string
-  sensitive   = true
-  default = "localadm"
-}
-
 variable "disk" {
   description = "Disk (size in Gb)"
   type = object({

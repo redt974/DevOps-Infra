@@ -7,5 +7,6 @@ variable "memory" {}
 variable "cores" {}
 variable "sockets" {}
 variable "vm_tags" {}
+variable "vm_os" {}
 variable "proxmox_url" {}
 variable "proxmox_api_token" {}

@@ -22,7 +22,7 @@ provider "proxmox" {
 module "ubuntu_vm" {
   source = "./modules/vm-ubuntu"
 
-  vm_hostname         = var.vm_hostname
+  vm_hostname         = "${var.vm_hostname}-ubuntu"
   domain              = var.domain
   template_tag        = var.template_tag
   target_node         = var.target_node
@@ -31,25 +31,27 @@ module "ubuntu_vm" {
   cores               = var.cores
   sockets             = var.sockets
   vm_tags             = concat(var.vm_tags, ["ubuntu"])
+  vm_os               = "ubuntu"
   proxmox_url         = var.proxmox_url
   proxmox_api_token   = var.proxmox_api_token
 }
 
-# module "debian_vm" {
-#   source = "./modules/vm-debian"
+module "debian_vm" {
+  source = "./modules/vm-debian"
 
-#   vm_hostname         = var.vm_hostname
-#   domain              = var.domain
-#   template_tag        = var.template_tag
-#   target_node         = var.target_node
-#   onboot              = var.onboot
-#   memory              = var.memory
-#   cores               = var.cores
-#   sockets             = var.sockets
-#   vm_tags             = concat(var.vm_tags, ["debian"])
-#   proxmox_url         = var.proxmox_url
-#   proxmox_api_token   = var.proxmox_api_token
-# }
+  vm_hostname         = "${var.vm_hostname}-debian"
+  domain              = var.domain
+  template_tag        = var.template_tag
+  target_node         = var.target_node
+  onboot              = var.onboot
+  memory              = var.memory
+  cores               = var.cores
+  sockets             = var.sockets
+  vm_tags             = concat(var.vm_tags, ["debian"])
+  vm_os               = "debian"
+  proxmox_url         = var.proxmox_url
+  proxmox_api_token   = var.proxmox_api_token
+}
 
 # module "arch_vm" {
 #   source = "./modules/vm-arch"
