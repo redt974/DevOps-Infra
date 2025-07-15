@@ -45,7 +45,6 @@ terraform.rc
 
 # Cloud-init
 terraform/cloud-init/
-terraform/default-cloud-init/
 
 # VS Code
 .vscode/

@@ -53,18 +53,19 @@ module "debian_vm" {
   proxmox_api_token   = var.proxmox_api_token
 }
 
-# module "arch_vm" {
-#   source = "./modules/vm-arch"
+module "arch_vm" {
+  source = "./modules/vm-arch"
 
-#   vm_hostname         = var.vm_hostname
-#   domain              = var.domain
-#   template_tag        = var.template_tag
-#   target_node         = var.target_node
-#   onboot              = var.onboot
-#   memory              = var.memory
-#   cores               = var.cores
-#   sockets             = var.sockets
-#   vm_tags             = concat(var.vm_tags, ["arch"])
-#   proxmox_url         = var.proxmox_url
-#   proxmox_api_token   = var.proxmox_api_token
-# }
+  vm_hostname         = "${var.vm_hostname}-arch"
+  domain              = var.domain
+  template_tag        = var.template_tag
+  target_node         = var.target_node
+  onboot              = var.onboot
+  memory              = var.memory
+  cores               = var.cores
+  sockets             = var.sockets
+  vm_tags             = concat(var.vm_tags, ["arch"])
+  vm_os               = "arch"
+  proxmox_url         = var.proxmox_url
+  proxmox_api_token   = var.proxmox_api_token
+}

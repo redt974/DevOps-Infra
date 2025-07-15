@@ -50,28 +50,28 @@ output "debian_vm_ip" {
   description = "Adresse IP de la VM Debian"
 }
 
-# # Outputs pour le module de création de VM Arch sur Proxmox
-# output "arch_vm_name" {
-#   description = "Nom de la VM créée"
-#   value = module.arch_vm.vm_name
-# }
+# Outputs pour le module de création de VM Arch sur Proxmox
+output "arch_vm_name" {
+  description = "Nom de la VM créée"
+  value = module.arch_vm.vm_name
+}
 
-# output "arch_vm_id" {
-#   description = "ID interne de la VM"
-#   value = module.arch_vm.vm_id
-# }
+output "arch_vm_id" {
+  description = "ID interne de la VM"
+  value = module.arch_vm.vm_id
+}
 
-# output "arch_node_name" {
-#   description = "Noeud Proxmox où est déployée la VM"
-#   value = module.arch_vm.node_name
-# }
+output "arch_node_name" {
+  description = "Noeud Proxmox où est déployée la VM"
+  value = module.arch_vm.node_name
+}
 
-# output "arch_vm_tags" {
-#   description = "Tags associés à la VM"
-#   value = module.arch_vm.vm_tags
-# }
+output "arch_vm_tags" {
+  description = "Tags associés à la VM"
+  value = module.arch_vm.vm_tags
+}
 
-# output "arch_vm_ip" {
-#   value = module.arch_vm.vm_ip
-#   description = "Adresse IP de la VM Arch"
-# }
+output "arch_vm_ip" {
+  value = module.arch_vm.vm_ip
+  description = "Adresse IP de la VM Arch"
+}
