@@ -7,7 +7,7 @@
 # 1. Télécharger l’image Ubuntu Cloud
 cd /var/lib/vz/template/iso
 if [[ ! -f "ubuntu-22.04-cloudimg.img" ]]; then
-wget https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img -O ubuntu-22.04-cloudimg.img
+  wget https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img -O ubuntu-22.04-cloudimg.img
 fi
 
 # 2. Créer une VM "squelette"
