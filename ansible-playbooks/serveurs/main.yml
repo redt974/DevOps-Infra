@@ -1,0 +1,8 @@
+- name: Config Serveur Linux à distance
+  hosts: serveur-vm
+  become: true
+
+  vars_prompt:
+
+  roles:
+    - config

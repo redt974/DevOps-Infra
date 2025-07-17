@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: simple-site
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: simple-site
+  template:
+    metadata:
+      labels:
+        app: simple-site
+    spec:
+      containers:
+        - name: nginx
+          image: simple-site:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 80
