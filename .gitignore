@@ -61,3 +61,5 @@ terraform/cloud-init/
 *.vsix
 
 terraform/.env
+
+kubernetes/reverse-proxy-web-https/setup_cert_openssl/

@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: site2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: site2
+  template:
+    metadata:
+      labels:
+        app: site2
+    spec:
+      containers:
+        - name: site2
+          image: site2:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 5000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: site2
+spec:
+  selector:
+    app: site2
+  ports:
+    - port: 5000
