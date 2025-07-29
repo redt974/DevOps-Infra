@@ -10,6 +10,8 @@ Ce dépôt regroupe l’ensemble des outils et configurations utilisés pour aut
 devops-infra/
 ├── ansible/            # Playbooks et rôles Ansible
 ├── proxmox/            # Configs spécifiques à Proxmox (réseau, cloud-init, etc.)
+├── docker/             # Fichier de configuration de conteneur Docker
+├── kubernetes/         # Fichier de configuration de Kubernetes (minikube)
 ├── terraform/          # Fichiers Terraform pour provisionnement VM
 ├── scripts-bash/       # Scripts shell de configuration et de hardening
 └── README.md
