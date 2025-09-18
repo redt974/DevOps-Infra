@@ -1,5 +1,36 @@
 #!/bin/bash
+
 set -e
+
+echo "👤 Votre nom d'utilisateur admin non-root :"
+read -p "Nom d'utilisateur : " USER
+
+# Génération clé utilisateur non-admin
+if [ ! -f /home/$USER/.ssh/id_rsa ]; then
+    sudo -u $USER ssh-keygen -t rsa -b 4096 -f /home/$USER/.ssh/id_rsa -N ""
+    cat /home/$USER/.ssh/id_rsa.pub >> /home/$USER/.ssh/authorized_keys
+
+    echo "⚠️ IMPORTANT : Note la clé privée pour $USER ci-dessous (à garder précieusement) !"
+    echo "✅ Clé SSH privée pour $USER :"
+    echo "----------------------------------------"
+    sudo cat /home/$USER/.ssh/id_rsa
+    echo "----------------------------------------"
+
+    rm -rf /home/$USER/.ssh/id_rsa # Supprimer la clé privée après affichage
+fi
+
+chown -R $USER:$USER /home/$USER/.ssh
+chmod 700 /home/$USER/.ssh
+chmod 600 /home/$USER/.ssh/authorized_keys
+
+echo "✅ Clés SSH générées et installées."
+
+# 🔒 Sécurisation SSH : uniquement clé publique
+sed -i 's/^#\?PasswordAuthentication .*/PasswordAuthentication no/' /etc/ssh/sshd_config
+sed -i 's/^#\?PermitRootLogin .*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
+sed -i 's/^#\?ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
+sed -i 's/^#\?UsePAM .*/UsePAM yes/' /etc/ssh/sshd_config
+systemctl restart sshd
 
 # 1) Installation des prérequis généraux
 echo "Mise à jour des dépôts..."
