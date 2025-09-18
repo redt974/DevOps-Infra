@@ -118,20 +118,48 @@ usermod -aG sudo "$USER"
 pveum user add $USER@pam
 pveum aclmod / -user $USER@pam -role PVEAdmin
 
-# 🔐 Autoriser login SSH avec clé (ou mot de passe temporairement)
-mkdir -p /home/$USER/.ssh
-cp /root/.ssh/authorized_keys /home/$USER/.ssh/authorized_keys 2>/dev/null || true
+# ================================================
+# 🔑 5. Génération des clés SSH root et $USER
+# ================================================
+
+echo "🔑 Génération de clés SSH pour root et $USER ..."
+
+# Génération clé root si inexistante
+if [ ! -f /root/.ssh/id_rsa ]; then
+    mkdir -p /root/.ssh
+    ssh-keygen -t rsa -b 4096 -f /root/.ssh/id_rsa -N ""
+    cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys
+    chmod 600 /root/.ssh/authorized_keys
+fi
+
+# Génération clé utilisateur non-admin
+if [ ! -f /home/$USER/.ssh/id_rsa ]; then
+    sudo -u $USER ssh-keygen -t rsa -b 4096 -f /home/$USER/.ssh/id_rsa -N ""
+    cat /home/$USER/.ssh/id_rsa.pub >> /home/$USER/.ssh/authorized_keys
+fi
+
 chown -R $USER:$USER /home/$USER/.ssh
 chmod 700 /home/$USER/.ssh
 chmod 600 /home/$USER/.ssh/authorized_keys
-sed -i 's/^#\?PasswordAuthentication .*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+
+echo "✅ Clés SSH générées et installées."
+
+
+# 🔒 Sécurisation SSH : uniquement clé publique
+sed -i 's/^#\?PasswordAuthentication .*/PasswordAuthentication no/' /etc/ssh/sshd_config
 sed -i 's/^#\?PermitRootLogin .*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
+sed -i 's/^#\?ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
+sed -i 's/^#\?UsePAM .*/UsePAM yes/' /etc/ssh/sshd_config
 systemctl restart sshd
+
+# ⚡ Autoriser sudo sans mot de passe pour $USER
+echo "$USER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/$USER
+chmod 440 /etc/sudoers.d/$USER
 
 echo "✅ Utilisateur '$USER' créé et root désactivé pour SSH."
 
 # ================================================
-# 🧱 5. (Optionnel) Création d’un template Cloud-Init
+# 🧱 6. (Optionnel) Création d’un template Cloud-Init
 # ================================================
 
 echo "ℹ️ Tu peux maintenant créer un template cloud-init avec Debian ou Ubuntu."

@@ -12,6 +12,9 @@ SERVER_CSR="serveur_ca.csr"
 SERVER_CERT="serveur_ca.crt"
 CERT_SERIAL="certificat_ca.srl"
 
+echo "👤 Utilisateur admin non-root de la Proxmox"
+read -p "Nom d'utilisateur : " USER_PROXMOX
+
 echo "🔧 Configuration du hostname et du fichier hosts..."
 sudo tee /etc/hosts <<EOF
 $PVE_IP $PVE_HOSTNAME
@@ -42,11 +45,13 @@ openssl x509 -req -in "$SERVER_CSR" -CA "$CA_CERT" -CAkey "$CA_KEY" \
   -extfile <(echo "subjectAltName=DNS:$PVE_HOSTNAME,DNS:www.$PVE_HOSTNAME,IP:$PVE_IP")
 
 echo "📂 Copie des certificats vers Proxmox ($PVE_IP)..."
-scp "$SERVER_CERT" root@"$PVE_IP":/etc/pve/local/pve-ssl.pem
-scp "$SERVER_KEY" root@"$PVE_IP":/etc/pve/local/pve-ssl.key
+ssh "$USER_PROXMOX"@"$PVE_IP" "sudo cp /tmp/"$SERVER_CERT" /etc/pve/local/pve-ssl.pem && sudo chown root:root /etc/pve/local/pve-ssl.pem && sudo chmod 644 /etc/pve/local/pve-ssl.pem"
+ssh "$USER_PROXMOX"@"$PVE_IP" "sudo cp /tmp/"$SERVER_KEY" /etc/pve/local/pve-ssl.key && sudo chown root:root /etc/pve/local/pve-ssl.key && sudo chmod 644 /etc/pve/local/pve-ssl.key"
+# scp "$SERVER_CERT" "$USER_PROXMOX"@"$PVE_IP":/etc/pve/local/pve-ssl.pem
+# scp "$SERVER_KEY" "$USER_PROXMOX"@"$PVE_IP":/etc/pve/local/pve-ssl.key
 
 echo "🔄 Redémarrage du service pveproxy sur Proxmox..."
-ssh root@"$PVE_IP" systemctl restart pveproxy
+ssh "$USER_PROXMOX"@"$PVE_IP" systemctl restart pveproxy
 
 echo "✅ Configuration terminée avec succès !"
 echo "📁 Les certificats sont disponibles dans le dossier : $(pwd)"
