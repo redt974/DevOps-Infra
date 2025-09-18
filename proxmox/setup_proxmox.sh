@@ -125,19 +125,16 @@ pveum aclmod / -user $USER@pam -role PVEAdmin
 echo "🔑 Génération de clés SSH pour root et $USER ..."
 
 # Génération clé root
-if [ -f /root/.ssh/id_rsa ]; then
-    mkdir -p /root/.ssh
-    rm -f /root/.ssh/id_rsa /root/.ssh/id_rsa.pub # Supprimer les anciennes clés si elles existent
-    ssh-keygen -t rsa -b 4096 -f /root/.ssh/id_rsa -N ""
-    cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys
-    chmod 600 /root/.ssh/authorized_keys
+cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys
+chmod 600 /root/.ssh/authorized_keys
 
-    echo "⚠️ IMPORTANT : Note la clé privée root ci-dessous (à garder précieusement) !"
-    echo "✅ Clé SSH privée root :"
-    echo "----------------------------------------"
-    sudo cat /root/.ssh/id_rsa
-    echo "----------------------------------------"
-fi
+echo "⚠️ IMPORTANT : Note la clé privée root ci-dessous (à garder précieusement) !"
+echo "✅ Clé SSH privée root :"
+echo "----------------------------------------"
+sudo cat /root/.ssh/id_rsa
+echo "----------------------------------------"
+
+rm -rf /root/.ssh/id_rsa # Supprimer la clé privée après affichage
 
 # Génération clé utilisateur non-admin
 if [ ! -f /home/$USER/.ssh/id_rsa ]; then
@@ -149,6 +146,8 @@ if [ ! -f /home/$USER/.ssh/id_rsa ]; then
     echo "----------------------------------------"
     sudo cat /home/$USER/.ssh/id_rsa
     echo "----------------------------------------"
+
+    rm -rf /home/$USER/.ssh/id_rsa # Supprimer la clé privée après affichage
 fi
 
 chown -R $USER:$USER /home/$USER/.ssh
