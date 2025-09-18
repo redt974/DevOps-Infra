@@ -124,9 +124,10 @@ pveum aclmod / -user $USER@pam -role PVEAdmin
 
 echo "🔑 Génération de clés SSH pour root et $USER ..."
 
-# Génération clé root si inexistante
-if [ ! -f /root/.ssh/id_rsa ]; then
+# Génération clé root
+if [ -f /root/.ssh/id_rsa ]; then
     mkdir -p /root/.ssh
+    rm -f /root/.ssh/id_rsa /root/.ssh/id_rsa.pub # Supprimer les anciennes clés si elles existent
     ssh-keygen -t rsa -b 4096 -f /root/.ssh/id_rsa -N ""
     cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys
     chmod 600 /root/.ssh/authorized_keys
