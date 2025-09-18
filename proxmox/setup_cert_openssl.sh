@@ -12,6 +12,11 @@ SERVER_CSR="serveur_ca.csr"
 SERVER_CERT="serveur_ca.crt"
 CERT_SERIAL="certificat_ca.srl"
 
+echo "🔧 Configuration du hostname et du fichier hosts..."
+sudo tee /etc/hosts <<EOF
+$PVE_IP $PVE_HOSTNAME
+EOF
+
 echo "📁 Création d'un dossier de travail : ./certs_openssl"
 mkdir -p certs_openssl
 cd certs_openssl
