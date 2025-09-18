@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 
-set -e  # Arrêter si une commande échoue
-set -u  # Erreur si variable non définie
+set -e  # Stop si une commande échoue
+set -u  # Stop si variable non définie
 
 # Variables
 IP_PROXMOX="192.168.10.180"
+IP_GATEWAY="192.168.10.2"
+INTERFACE="ens33"
 CN_PROXMOX="proxmox.local"
 
 # ================================================
@@ -12,36 +14,46 @@ CN_PROXMOX="proxmox.local"
 # ================================================
 export DEBIAN_FRONTEND=noninteractive
 
-# 🖥️ /etc/hosts - Personnaliser si nécessaire
-cat > /etc/hosts << EOF
-127.0.0.1       localhost
-::1             localhost ip6-localhost ip6-loopback
-ff02::1         ip6-allnodes
-ff02::2         ip6-allrouters
-$IP_PROXMOX  $CN_PROXMOX pve
-EOF
+# 🖥️ /etc/hosts - Ajouter proprement l'entrée Proxmox
+if ! grep -q "$CN_PROXMOX" /etc/hosts; then
+    echo "$IP_PROXMOX  $CN_PROXMOX pve" >> /etc/hosts
+fi
 
-# 🔧 Configuration réseau et forwarding
+# Vérification que le hostname est correct
+CURRENT_HOSTNAME=$(hostname -f || true)
+if [ "$CURRENT_HOSTNAME" != "$CN_PROXMOX" ]; then
+    echo "$CN_PROXMOX" > /etc/hostname
+    hostnamectl set-hostname "$CN_PROXMOX"
+fi
+
+# 🔧 Configuration sysctl (sécurisée)
 cat > /etc/sysctl.d/proxmox.conf << EOF
 net.ipv4.conf.all.rp_filter=1
 net.ipv4.icmp_echo_ignore_broadcasts=1
 net.ipv4.ip_forward=1
 EOF
 
-sysctl -p /etc/sysctl.d/proxmox.conf
+sysctl --system
 
-# 🔌 Configuration bridge (à adapter si besoin)
+# 🔌 Configuration réseau (backup + écriture propre)
+cp /etc/network/interfaces /etc/network/interfaces.bak.$(date +%F_%H-%M-%S)
+
 cat > /etc/network/interfaces << EOF
 source /etc/network/interfaces.d/*
 
 auto lo
 iface lo inet loopback
 
+# Interface physique en mode "manual"
+allow-hotplug $INTERFACE
+iface $INTERFACE inet manual
+
+# Bridge principal
 auto vmbr0
 iface vmbr0 inet static
         address $IP_PROXMOX/24
-        gateway 192.168.10.2
-        bridge-ports ens33
+        gateway $IP_GATEWAY
+        bridge-ports $INTERFACE
         bridge-stp off
         bridge-fd 0
 EOF
@@ -75,9 +87,6 @@ pveum user token add terraform-user@pve terraform-token --expire 0 --privsep 0 -
 
 echo "✅ Utilisateur terraform@pve et token créés pour l'accès API Terraform"
 
-# 🔧 Nettoyage de noyaux inutiles
-apt remove -y linux-image-amd64 'linux-image-6.1*' os-prober
-
 echo "🛠️ Activation du type 'snippets' pour le datastore 'local'..."
 
 # Ajoute 'snippets' comme type de contenu autorisé sur 'local'
@@ -91,6 +100,9 @@ echo "✅ Le type 'snippets' est maintenant activé pour 'local'."
 # ================================================
 # 👤 4. Création d'un utilisateur admin non-root
 # ================================================
+
+echo "ℹ️ Création d'un utilisateur admin non-root pour l'accès SSH et l'interface web."
+echo "⚠️ L'accès SSH direct au compte root sera désactivé."
 
 read -p "Nom d'utilisateur : " USER
 echo "[*] Saisie du mot de passe pour $USER"
