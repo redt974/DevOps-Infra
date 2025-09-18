@@ -125,8 +125,16 @@ pveum aclmod / -user $USER@pam -role PVEAdmin
 echo "🔑 Génération de clés SSH pour root et $USER ..."
 
 # Génération clé root
-cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys
-chmod 600 /root/.ssh/authorized_keys
+if [ ! -f /root/.ssh/id_rsa ]; then
+    mkdir -p /root/.ssh
+    ssh-keygen -t rsa -b 4096 -f /root/.ssh/id_rsa -N ""
+    cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys
+    chmod 600 /root/.ssh/authorized_keys
+else
+    echo "La clé SSH root existe déjà, pas de régénération."
+    cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys
+    chmod 600 /root/.ssh/authorized_keys
+fi
 
 echo "⚠️ IMPORTANT : Note la clé privée root ci-dessous (à garder précieusement) !"
 echo "✅ Clé SSH privée root :"
