@@ -124,6 +124,9 @@ cp /root/.ssh/authorized_keys /home/$USER/.ssh/authorized_keys 2>/dev/null || tr
 chown -R $USER:$USER /home/$USER/.ssh
 chmod 700 /home/$USER/.ssh
 chmod 600 /home/$USER/.ssh/authorized_keys
+sed -i 's/^#\?PasswordAuthentication .*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+sed -i 's/^#\?PermitRootLogin .*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
+systemctl restart sshd
 
 echo "✅ Utilisateur '$USER' créé et root désactivé pour SSH."
 
