@@ -47,8 +47,6 @@ openssl x509 -req -in "$SERVER_CSR" -CA "$CA_CERT" -CAkey "$CA_KEY" \
 echo "📂 Copie des certificats vers Proxmox ($PVE_IP)..."
 ssh "$USER_PROXMOX"@"$PVE_IP" "sudo cp /tmp/"$SERVER_CERT" /etc/pve/local/pve-ssl.pem && sudo chown root:root /etc/pve/local/pve-ssl.pem && sudo chmod 644 /etc/pve/local/pve-ssl.pem"
 ssh "$USER_PROXMOX"@"$PVE_IP" "sudo cp /tmp/"$SERVER_KEY" /etc/pve/local/pve-ssl.key && sudo chown root:root /etc/pve/local/pve-ssl.key && sudo chmod 644 /etc/pve/local/pve-ssl.key"
-# scp "$SERVER_CERT" "$USER_PROXMOX"@"$PVE_IP":/etc/pve/local/pve-ssl.pem
-# scp "$SERVER_KEY" "$USER_PROXMOX"@"$PVE_IP":/etc/pve/local/pve-ssl.key
 
 echo "🔄 Redémarrage du service pveproxy sur Proxmox..."
 ssh "$USER_PROXMOX"@"$PVE_IP" systemctl restart pveproxy

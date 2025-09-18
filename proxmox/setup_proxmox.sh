@@ -130,12 +130,24 @@ if [ ! -f /root/.ssh/id_rsa ]; then
     ssh-keygen -t rsa -b 4096 -f /root/.ssh/id_rsa -N ""
     cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys
     chmod 600 /root/.ssh/authorized_keys
+
+    echo "⚠️ IMPORTANT : Note la clé privée root ci-dessous (à garder précieusement) !"
+    echo "✅ Clé SSH privée root :"
+    echo "----------------------------------------"
+    sudo cat /root/.ssh/id_rsa
+    echo "----------------------------------------"
 fi
 
 # Génération clé utilisateur non-admin
 if [ ! -f /home/$USER/.ssh/id_rsa ]; then
     sudo -u $USER ssh-keygen -t rsa -b 4096 -f /home/$USER/.ssh/id_rsa -N ""
     cat /home/$USER/.ssh/id_rsa.pub >> /home/$USER/.ssh/authorized_keys
+
+    echo "⚠️ IMPORTANT : Note la clé privée pour $USER ci-dessous (à garder précieusement) !"
+    echo "✅ Clé SSH privée pour $USER :"
+    echo "----------------------------------------"
+    sudo cat /home/$USER/.ssh/id_rsa
+    echo "----------------------------------------"
 fi
 
 chown -R $USER:$USER /home/$USER/.ssh
@@ -143,7 +155,6 @@ chmod 700 /home/$USER/.ssh
 chmod 600 /home/$USER/.ssh/authorized_keys
 
 echo "✅ Clés SSH générées et installées."
-
 
 # 🔒 Sécurisation SSH : uniquement clé publique
 sed -i 's/^#\?PasswordAuthentication .*/PasswordAuthentication no/' /etc/ssh/sshd_config
