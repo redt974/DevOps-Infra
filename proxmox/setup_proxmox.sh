@@ -142,8 +142,6 @@ echo "----------------------------------------"
 sudo cat /root/.ssh/id_rsa
 echo "----------------------------------------"
 
-rm -rf /root/.ssh/id_rsa # Supprimer la clé privée après affichage
-
 # Génération clé utilisateur non-admin
 if [ ! -f /home/$USER/.ssh/id_rsa ]; then
     sudo -u $USER ssh-keygen -t rsa -b 4096 -f /home/$USER/.ssh/id_rsa -N ""
@@ -154,8 +152,6 @@ if [ ! -f /home/$USER/.ssh/id_rsa ]; then
     echo "----------------------------------------"
     sudo cat /home/$USER/.ssh/id_rsa
     echo "----------------------------------------"
-
-    rm -rf /home/$USER/.ssh/id_rsa # Supprimer la clé privée après affichage
 fi
 
 chown -R $USER:$USER /home/$USER/.ssh

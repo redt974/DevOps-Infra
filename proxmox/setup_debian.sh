@@ -15,8 +15,6 @@ if [ ! -f /home/$USER/.ssh/id_rsa ]; then
     echo "----------------------------------------"
     sudo cat /home/$USER/.ssh/id_rsa
     echo "----------------------------------------"
-
-    rm -rf /home/$USER/.ssh/id_rsa /home/$USER/.ssh/id_rsa.pub # Supprimer la clé privée et public après affichage
 fi
 
 chown -R $USER:$USER /home/$USER/.ssh
