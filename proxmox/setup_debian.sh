@@ -16,7 +16,7 @@ if [ ! -f /home/$USER/.ssh/id_rsa ]; then
     sudo cat /home/$USER/.ssh/id_rsa
     echo "----------------------------------------"
 
-    rm -rf /home/$USER/.ssh/id_rsa # Supprimer la clé privée après affichage
+    rm -rf /home/$USER/.ssh/id_rsa /home/$USER/.ssh/id_rsa.pub # Supprimer la clé privée et public après affichage
 fi
 
 chown -R $USER:$USER /home/$USER/.ssh
@@ -26,11 +26,11 @@ chmod 600 /home/$USER/.ssh/authorized_keys
 echo "✅ Clés SSH générées et installées."
 
 # 🔒 Sécurisation SSH : uniquement clé publique
-sed -i 's/^#\?PasswordAuthentication .*/PasswordAuthentication no/' /etc/ssh/sshd_config
-sed -i 's/^#\?PermitRootLogin .*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
-sed -i 's/^#\?ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
-sed -i 's/^#\?UsePAM .*/UsePAM yes/' /etc/ssh/sshd_config
-systemctl restart sshd
+sudo sed -i 's/^#\?PasswordAuthentication .*/PasswordAuthentication no/' /etc/ssh/sshd_config
+sudo sed -i 's/^#\?PermitRootLogin .*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
+sudo sed -i 's/^#\?ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
+sudo sed -i 's/^#\?UsePAM .*/UsePAM yes/' /etc/ssh/sshd_config
+sudo systemctl restart sshd
 
 # 1) Installation des prérequis généraux
 echo "Mise à jour des dépôts..."
