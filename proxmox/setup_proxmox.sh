@@ -131,7 +131,9 @@ if [ ! -f /root/.ssh/id_rsa ]; then
     cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys
     chmod 600 /root/.ssh/authorized_keys
 else
-    echo "La clé SSH root existe déjà, pas de régénération."
+    echo "La clé SSH root existe déjà, régénération."
+    rm -rf /root/.ssh/id_rsa
+    ssh-keygen -t rsa -b 4096 -f /root/.ssh/id_rsa -N ""
     cat /root/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys
     chmod 600 /root/.ssh/authorized_keys
 fi
