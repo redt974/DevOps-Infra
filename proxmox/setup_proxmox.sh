@@ -8,8 +8,6 @@ IP_PROXMOX="192.168.10.180"
 IP_GATEWAY="192.168.10.2"
 INTERFACE="ens33"
 CN_PROXMOX="proxmox.local"
-USERNAME="Thibaut"
-SSH_PRIVATE_KEY_DIR="C:\Users\\"$USERNAME"\.ssh\proxmox-devops\\"
 
 # ================================================
 # ⚙️ 1. Configuration système et réseau
@@ -143,7 +141,7 @@ fi
 echo "⚠️ IMPORTANT : SCP de la clé privée root ci-dessous (à garder précieusement) !"
 echo "✅ Clé SSH privée root :"
 echo "----------------------------------------"
-scp root@"$IP_PROXMOX":/root/.ssh/id_rsa "$SSH_PRIVATE_KEY_DIR/root_id_rsa"
+base64 /root/.ssh/id_rsa
 echo "----------------------------------------"
 
 # Génération clé utilisateur non-admin
@@ -154,7 +152,7 @@ if [ ! -f /home/$USER/.ssh/id_rsa ]; then
     echo "⚠️ IMPORTANT : Note la clé privée pour $USER ci-dessous (à garder précieusement) !"
     echo "✅ Clé SSH privée pour $USER :"
     echo "----------------------------------------"
-    scp root@"$IP_PROXMOX":/home/$USER/.ssh/id_rsa" "$SSH_PRIVATE_KEY_DIR"/"$USER"_id_rsa"
+    base64 /home/$USER/.ssh/id_rsa
     echo "----------------------------------------"
 fi
 
