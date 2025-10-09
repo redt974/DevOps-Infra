@@ -140,8 +140,6 @@ else
     chmod 600 /root/.ssh/authorized_keys
 fi
 
-mkdir -p $SSH_PRIVATE_KEY_DIR
-
 echo "⚠️ IMPORTANT : SCP de la clé privée root ci-dessous (à garder précieusement) !"
 echo "✅ Clé SSH privée root :"
 echo "----------------------------------------"
