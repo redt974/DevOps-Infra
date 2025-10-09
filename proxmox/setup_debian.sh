@@ -13,7 +13,7 @@ if [ ! -f /home/$USER/.ssh/id_rsa ]; then
     echo "⚠️ IMPORTANT : Note la clé privée pour $USER ci-dessous (à garder précieusement) !"
     echo "✅ Clé SSH privée pour $USER :"
     echo "----------------------------------------"
-    sudo cat /home/$USER/.ssh/id_rsa
+    base64 /home/$USER/.ssh/id_rsa
     echo "----------------------------------------"
 fi
 

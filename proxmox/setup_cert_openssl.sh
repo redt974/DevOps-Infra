@@ -18,9 +18,9 @@ read -p "Nom d'utilisateur : " USER_PROXMOX
 
 # Vérification clé SSH
 if [ ! -f "$SSH_KEY_PATH" ]; then
-    echo "⚠️  Clé SSH Proxmox introuvable à : $SSH_KEY_PATH"
-    echo "Veuillez copier votre clé privée depuis Windows, par exemple :"
-    echo "scp C:\\Users\\<toi>\\.ssh\\proxmox-devops\\"$USER_PROXMOX"_id_rsa $(whoami)@$(hostname -I | awk '{print $1}'):$SSH_KEY_PATH"
+    echo "⚠️  Clé SSH Root Proxmox introuvable à : $SSH_KEY_PATH"
+    echo "Veuillez copier votre clé privée root depuis Windows, par exemple :"
+    vim "$SSH_KEY_PATH"
     echo
     read -p "Appuie sur Entrée quand c’est fait..."
 fi
