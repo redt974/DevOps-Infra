@@ -138,7 +138,7 @@ else
     chmod 600 /root/.ssh/authorized_keys
 fi
 
-echo "⚠️ IMPORTANT : SCP de la clé privée root ci-dessous (à garder précieusement) !"
+echo "⚠️ IMPORTANT : Note la clé privée root ci-dessous (à garder précieusement) !"
 echo "✅ Clé SSH privée root :"
 echo "----------------------------------------"
 base64 /root/.ssh/id_rsa
