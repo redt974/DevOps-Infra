@@ -9,7 +9,7 @@ IP_GATEWAY="192.168.10.2"
 INTERFACE="ens33"
 CN_PROXMOX="proxmox.local"
 USERNAME="Thibaut"
-SSH_PRIVATE_KEY_DIR="C:\Users\"$USERNAME"\.ssh\proxmox-devops\\"
+SSH_PRIVATE_KEY_DIR="C:\Users\\"$USERNAME"\.ssh\proxmox-devops\\"
 
 # ================================================
 # ⚙️ 1. Configuration système et réseau
