@@ -104,14 +104,20 @@ echo "Installation de Vagrant..."
 sudo apt install -y vagrant
 
 # 10) VS Code :
-sudo apt-get install wget gpg
-wget -qO- https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/microsoft.gpg
-sudo install -D -o root -g root -m 644 packages.microsoft.gpg /etc/apt/keyrings/packages.microsoft.gpg
-echo "deb [arch=amd64 signed-by=/etc/apt/trusted.gpg.d/microsoft.gpg] https://packages.microsoft.com/repos/code stable main" | sudo tee /etc/apt/sources.list.d/vscode.list
-rm -f packages.microsoft.gpg
+# Installer les dépendances de base
+sudo apt-get update
+sudo apt-get install -y wget gpg
 
+# Télécharger la clé Microsoft et la placer correctement
+wget -qO- https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /etc/apt/keyrings/packages.microsoft.gpg
+
+# Ajouter le dépôt VS Code
+echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" \
+| sudo tee /etc/apt/sources.list.d/vscode.list > /dev/null
+
+# Mettre à jour et installer VS Code
 sudo apt update
-sudo apt install code
+sudo apt install -y code
 
 echo "✅ Installation terminée avec succès !"
 echo "Test SSH Proxmox → ssh proxmox"
