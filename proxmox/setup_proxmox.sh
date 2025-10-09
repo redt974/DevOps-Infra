@@ -141,7 +141,7 @@ fi
 echo "⚠️ IMPORTANT : Note la clé privée root ci-dessous (à garder précieusement) !"
 echo "✅ Clé SSH privée root :"
 echo "----------------------------------------"
-sudo cat /root/.ssh/id_rsa | sed 's/^/    /'
+cat /root/.ssh/id_rsa
 echo "----------------------------------------"
 
 # Génération clé utilisateur non-admin
@@ -152,7 +152,7 @@ if [ ! -f /home/$USER/.ssh/id_rsa ]; then
     echo "⚠️ IMPORTANT : Note la clé privée pour $USER ci-dessous (à garder précieusement) !"
     echo "✅ Clé SSH privée pour $USER :"
     echo "----------------------------------------"
-    sudo cat /home/$USER/.ssh/id_rsa | sed 's/^/    /'
+    cat /home/$USER/.ssh/id_rsa
     echo "----------------------------------------"
 fi
 
