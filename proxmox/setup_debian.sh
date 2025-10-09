@@ -35,7 +35,7 @@ echo "Mise à jour des dépôts..."
 sudo apt update && sudo apt upgrade -y
 
 echo "Installation des prérequis généraux..."
-sudo apt install -y software-properties-common curl vim apt-transport-https ca-certificates gnupg lsb-release unzip openjdk-17-jdk
+sudo apt install -y tree jq htop net-tools sshpass software-properties-common curl vim apt-transport-https ca-certificates gnupg lsb-release unzip openjdk-17-jdk
 
 # 2) Terraform (HashiCorp)
 echo "Installation de Terraform..."
@@ -105,13 +105,17 @@ sudo apt install -y vagrant
 
 # 10) VS Code :
 sudo apt-get install wget gpg
-wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > packages.microsoft.gpg
+wget -qO- https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/microsoft.gpg
 sudo install -D -o root -g root -m 644 packages.microsoft.gpg /etc/apt/keyrings/packages.microsoft.gpg
-echo "deb [arch=amd64,arm64,armhf signed-by=/etc/apt/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" |sudo tee /etc/apt/sources.list.d/vscode.list > /dev/null
+echo "deb [arch=amd64 signed-by=/etc/apt/trusted.gpg.d/microsoft.gpg] https://packages.microsoft.com/repos/code stable main" | sudo tee /etc/apt/sources.list.d/vscode.list
 rm -f packages.microsoft.gpg
 
-sudo apt install apt-transport-https
 sudo apt update
 sudo apt install code
 
-echo "Installation terminée ! Pensez à relancer votre session ou faire 'newgrp docker' pour prendre en compte l ajout au groupe docker."
+echo "✅ Installation terminée avec succès !"
+echo "Test SSH Proxmox → ssh proxmox"
+echo "Terraform → terraform version"
+echo "Ansible → ansible --version"
+echo "Docker → docker run hello-world"
+echo "Kubectl → kubectl version --client"
