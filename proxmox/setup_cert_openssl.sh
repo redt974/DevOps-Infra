@@ -2,6 +2,7 @@
 set -e
 
 # Variables principales
+USER_PROXMOX=root
 PVE_HOSTNAME="proxmox.local"
 PVE_IP="192.168.10.180"
 CA_KEY="certificat_ca.key"
@@ -11,10 +12,6 @@ SERVER_CSR="serveur_ca.csr"
 SERVER_CERT="serveur_ca.crt"
 CERT_SERIAL="certificat_ca.srl"
 SSH_KEY_PATH="$HOME/.ssh/proxmox_root_id_rsa"  # chemin de la clé privée Proxmox
-
-# Demande utilisateur
-echo "👤 Utilisateur de connexion Proxmox (root ou user sudo)"
-read -p "Nom d'utilisateur : " USER_PROXMOX
 
 # Vérification clé SSH
 if [ ! -f "$SSH_KEY_PATH" ]; then
@@ -62,9 +59,15 @@ scp -i "$SSH_KEY_PATH" "$SERVER_KEY" "$USER_PROXMOX@$PVE_IP:/tmp/"
 
 # ⚙️ Application sur Proxmox
 if [ "$USER_PROXMOX" == "root" ]; then
-    ssh -i "$SSH_KEY_PATH" "$USER_PROXMOX@$PVE_IP" "cp /tmp/$SERVER_CERT /etc/pve/local/pve-ssl.pem && cp /tmp/$SERVER_KEY /etc/pve/local/pve-ssl.key && chown root:root /etc/pve/local/pve-ssl.* && chmod 644 /etc/pve/local/pve-ssl.*"
+    ssh -i "$SSH_KEY_PATH" "$USER_PROXMOX@$PVE_IP" "\
+        cp /tmp/$SERVER_CERT /etc/pve/local/pve-ssl.pem && \
+        cp /tmp/$SERVER_KEY /etc/pve/local/pve-ssl.key && \
+        systemctl restart pveproxy"
 else
-    ssh -i "$SSH_KEY_PATH" "$USER_PROXMOX@$PVE_IP" "sudo cp /tmp/$SERVER_CERT /etc/pve/local/pve-ssl.pem && sudo cp /tmp/$SERVER_KEY /etc/pve/local/pve-ssl.key && sudo chown root:root /etc/pve/local/pve-ssl.* && sudo chmod 644 /etc/pve/local/pve-ssl.*"
+    ssh -i "$SSH_KEY_PATH" "$USER_PROXMOX@$PVE_IP" "\
+        sudo cp /tmp/$SERVER_CERT /etc/pve/local/pve-ssl.pem && \
+        sudo cp /tmp/$SERVER_KEY /etc/pve/local/pve-ssl.key && \
+        sudo systemctl restart pveproxy"
 fi
 
 # 🔄 Redémarrage du service pveproxy
