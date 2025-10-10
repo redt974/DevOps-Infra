@@ -36,7 +36,7 @@ variable "proxmox_api_token" {
 variable "target_node" {
   description = "Proxmox node"
   type        = string
-  default = "pve"
+  default = "proxmox"
 }
 
 variable "onboot" {
