@@ -122,6 +122,7 @@ fi
 # Add SSH key to the agent
 echo "🔑 Ajout de la clé SSH à l'agent..."
 eval "$(ssh-agent -s)"
+ssh-add "$HOME/.ssh/proxmox_root_id_rsa"
 ssh-add "$SSH_KEY_PATH"
 
 # Affichage des clés SSH ajoutées
