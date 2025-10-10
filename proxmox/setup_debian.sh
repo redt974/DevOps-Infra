@@ -35,7 +35,7 @@ echo "Mise à jour des dépôts..."
 sudo apt update && sudo apt upgrade -y
 
 echo "Installation des prérequis généraux..."
-sudo apt install -y tree jq htop net-tools sshpass software-properties-common curl vim apt-transport-https ca-certificates gnupg lsb-release unzip openjdk-17-jdk
+sudo apt install -y tree jq htop net-tools sshpass software-properties-common curl vim apt-transport-https ca-certificates gnupg lsb-release unzip openjdk-17-jdk make build-essential
 
 # 2) Terraform (HashiCorp)
 echo "Installation de Terraform..."
