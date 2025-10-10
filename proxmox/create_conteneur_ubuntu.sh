@@ -20,9 +20,9 @@ if [[ ! $gateway =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
 fi
 
 # Fichier ISO
-TEMPLATE_FILE="debian-12-standard_12.12-1_amd64.tar.zst"
+TEMPLATE_FILE="ubuntu-22.04-standard_22.04-1_amd64.tar.zst"
 TEMPLATE_STORAGE="local" # Stockage ISO dans Proxmox
-USER_NAME=debian
+USER_NAME=ubuntu
 CONTENEUR_SSH_KEY="$HOME/.ssh/conteneur-$USER_NAME.local_id_rsa"
 
 # Mise à jour de Proxmox
@@ -31,7 +31,7 @@ pveam update
 
 # Vérifier si le template existe avant de le télécharger
 if ! pveam list $TEMPLATE_STORAGE | grep -q "$TEMPLATE_FILE"; then
-    echo "[*] Téléchargement du template Debian..."
+    echo "[*] Téléchargement du template Ubuntu..."
     pveam download $TEMPLATE_STORAGE $TEMPLATE_FILE
 fi
 
@@ -57,15 +57,6 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Génération de la clé SSH ↔ Proxmox
-echo "[*] Vérification / génération de la clé SSH..."
-if [ ! -f "$CONTENEUR_SSH_KEY" ]; then
-  ssh-keygen -t rsa -b 4096 -N '' -f "$CONTENEUR_SSH_KEY" -C "$USER_NAME@$(hostname)"
-  echo "[*] Clé SSH générée : $CONTENEUR_SSH_KEY"
-else
-  echo "[*] Clé SSH déjà existante : $CONTENEUR_SSH_KEY"
-fi
-
 # Démarrage du conteneur
 echo "[*] Démarrage du conteneur..."
 pct start "$VMID"
@@ -76,6 +67,15 @@ if ! pct status "$VMID" | grep -q "running"; then
     exit 1
 fi
 
+# Génération de la clé SSH ↔ Proxmox
+echo "[*] Vérification / génération de la clé SSH..."
+if [ ! -f "$CONTENEUR_SSH_KEY" ]; then
+  ssh-keygen -t rsa -b 4096 -N '' -f "$CONTENEUR_SSH_KEY" -C "$USER_NAME@$(hostname)"
+  echo "[*] Clé SSH générée : $CONTENEUR_SSH_KEY"
+else
+  echo "[*] Clé SSH déjà existante : $CONTENEUR_SSH_KEY"
+fi
+
 # Configuration de la VM
 echo "[*] Mise à jour du système..."
 pct exec "$VMID" -- apt update -y && apt upgrade -y
@@ -84,19 +84,16 @@ pct exec "$VMID" -- bash -c "echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen && local
 pct exec "$VMID" -- update-locale LANG=en_US.UTF-8
 
 echo "[*] Installation des outils de sécurité..."
-pct exec "$VMID" -- apt install -y sudo openssh-server ufw fail2ban apparmor apparmor-utils auditd unattended-upgrades apt-listchanges
+pct exec "$VMID" -- apt install -y ufw fail2ban apparmor apparmor-utils auditd unattended-upgrades apt-listchanges
 
 echo "[*] Configuration des mises à jour automatiques..."
 pct exec "$VMID" -- dpkg-reconfigure -plow unattended-upgrades
 
-echo "[*] Configuration du groupe sudo..."
-pct exec "$VMID" -- bash -c "grep -q '^%sudo' /etc/sudoers || echo '%sudo ALL=(ALL:ALL) ALL' >> /etc/sudoers"
+echo "[*] Création de l'utilisateur $USER_NAME non-root avec sudo..."
+pct exec "$VMID" -- useradd -m -s /bin/bash -G sudo "$USER_NAME"
 
-echo "[*] Création de l'utilisateur $USER_NAME non-root avec sudo sans mot de passe..."
-if ! pct exec "$VMID" -- id "$USER_NAME" &>/dev/null; then
-    pct exec "$VMID" -- bash -c "useradd -m -s /bin/bash -G sudo $USER_NAME"
-    pct exec "$VMID" -- bash -c "mkdir -p /etc/sudoers.d && echo '$USER_NAME ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/$USER_NAME && chmod 440 /etc/sudoers.d/$USER_NAME"
-fi
+echo "[*] Configuration du groupe sudo..."
+pct exec "$VMID" -- bash -c "mkdir -p /etc/sudoers.d && echo '$USER_NAME ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/$USER_NAME && chmod 440 /etc/sudoers.d/$USER_NAME"
 
 echo "[*] Copie de la clé publique SSH de Proxmox dans le conteneur..."
 pct exec "$VMID" -- mkdir -p /home/$USER_NAME/.ssh
@@ -119,11 +116,9 @@ pct exec "$VMID" -- sed -i 's/^#Port 22/Port 2222/' /etc/ssh/sshd_config
 pct exec "$VMID" -- sed -i 's/^#PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config
 pct exec "$VMID" -- sed -i 's/^#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
 pct exec "$VMID" -- sed -i 's/^#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config
-pct exec "$VMID" -- systemctl stop ssh.socket 2>/dev/null || true
-pct exec "$VMID" -- systemctl disable ssh.socket 2>/dev/null || true
-pct exec "$VMID" -- systemctl restart ssh || systemctl restart sshd
-pct exec "$VMID" -- systemctl enable ssh || systemctl enable sshd
-
+pct exec "$VMID" -- systemctl enable ssh
+pct exec "$VMID" -- systemctl start ssh
+sleep 2
 
 echo "[*] Configuration du pare-feu UFW..."
 pct exec "$VMID" -- ufw default deny incoming
@@ -148,4 +143,5 @@ pct exec "$VMID" -- apt autoremove -y && apt autoclean -y
 echo "[*] Sécurisation terminée ! Redémarrage recommandé."
 pct reboot "$VMID"
 
+pct exec "$VMID" -- systemctl start ssh
 echo "Connexion SSH : ssh -p 2222 -i "$CONTENEUR_SSH_KEY" $USER_NAME@$ip"

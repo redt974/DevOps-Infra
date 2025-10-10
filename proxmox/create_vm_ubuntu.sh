@@ -7,8 +7,8 @@ if ! [[ $VMID =~ ^[0-9]+$ ]]; then
 fi
 
 # Fichier ISO
-ISO_URL="https://mirror.us.leaseweb.net/debian-cd/current/amd64/iso-cd"
-ISO_FILE="debian-12.10.0-amd64-netinst.iso"
+ISO_URL="https://mirror.tutosfaciles48.fr/ubuntu/24.04.3"
+ISO_FILE="ubuntu-24.04.3-desktop-amd64.iso"
 ISO_STORAGE="local" # Proxmox ISO storage
 
 # Paramètres de la VM
@@ -23,7 +23,7 @@ CORES=2
 DISK_SIZE=20
 
 # Télécharger l'iso
-echo "[*] Vérification et téléchargement de l'ISO Debian Linux"
+echo "[*] Vérification et téléchargement de l'ISO Ubuntu Linux"
 if ! pvesh get /nodes/$(hostname)/storage/$ISO_STORAGE/content | grep -q $ISO_FILE; then
   echo "[*] Téléchargement de $ISO_FILE..."
   wget -O /var/lib/vz/template/iso/$ISO_FILE $ISO_URL/$ISO_FILE
@@ -52,6 +52,6 @@ fi
 # Désactiver la Virtualization KVM
 qm set $VMID --kvm 0
 
-# Démarrage de la VM (installation manuelle de Debian + cloud-init inside)
-echo "[*] Démarrage de la VM pour installation de Debian Linux"
+# Démarrage de la VM (installation manuelle de Ubuntu + cloud-init inside)
+echo "[*] Démarrage de la VM pour installation de Ubuntu Linux"
 qm start $VMID

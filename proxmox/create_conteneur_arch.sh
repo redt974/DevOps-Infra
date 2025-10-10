@@ -20,9 +20,9 @@ if [[ ! $gateway =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
 fi
 
 # Fichier ISO
-TEMPLATE_FILE="debian-12-standard_12.12-1_amd64.tar.zst"
+TEMPLATE_FILE="archlinux-base_20240911-1_amd64.tar.zst"
 TEMPLATE_STORAGE="local" # Stockage ISO dans Proxmox
-USER_NAME=debian
+USER_NAME=arch
 CONTENEUR_SSH_KEY="$HOME/.ssh/conteneur-$USER_NAME.local_id_rsa"
 
 # Mise à jour de Proxmox
@@ -31,7 +31,7 @@ pveam update
 
 # Vérifier si le template existe avant de le télécharger
 if ! pveam list $TEMPLATE_STORAGE | grep -q "$TEMPLATE_FILE"; then
-    echo "[*] Téléchargement du template Debian..."
+    echo "[*] Téléchargement du template Arch..."
     pveam download $TEMPLATE_STORAGE $TEMPLATE_FILE
 fi
 
@@ -57,15 +57,6 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Génération de la clé SSH ↔ Proxmox
-echo "[*] Vérification / génération de la clé SSH..."
-if [ ! -f "$CONTENEUR_SSH_KEY" ]; then
-  ssh-keygen -t rsa -b 4096 -N '' -f "$CONTENEUR_SSH_KEY" -C "$USER_NAME@$(hostname)"
-  echo "[*] Clé SSH générée : $CONTENEUR_SSH_KEY"
-else
-  echo "[*] Clé SSH déjà existante : $CONTENEUR_SSH_KEY"
-fi
-
 # Démarrage du conteneur
 echo "[*] Démarrage du conteneur..."
 pct start "$VMID"
@@ -76,25 +67,38 @@ if ! pct status "$VMID" | grep -q "running"; then
     exit 1
 fi
 
+# Génération de la clé SSH ↔ Proxmox
+echo "[*] Vérification / génération de la clé SSH..."
+if [ ! -f "$CONTENEUR_SSH_KEY" ]; then
+  ssh-keygen -t rsa -b 4096 -N '' -f "$CONTENEUR_SSH_KEY" -C "$USER_NAME@$(hostname)"
+  echo "[*] Clé SSH générée : $CONTENEUR_SSH_KEY"
+else
+  echo "[*] Clé SSH déjà existante : $CONTENEUR_SSH_KEY"
+fi
+
 # Configuration de la VM
+pct exec "$VMID" -- ip link set eth0 up
+pct exec "$VMID" -- ip addr add $ip/24 dev eth0
+pct exec "$VMID" -- ip route add default via $gateway
+
 echo "[*] Mise à jour du système..."
-pct exec "$VMID" -- apt update -y && apt upgrade -y
+pct exec "$VMID" -- pacman-key --init
+pct exec "$VMID" -- pacman-key --populate archlinux
+pct exec "$VMID" -- pacman -Syu --noconfirm
 
+echo "[*] Installation des paquets essentiels..."
+pct exec "$VMID" -- pacman -Sy --noconfirm sudo openssh
+
+echo "[*] Configuration de la locale..."
 pct exec "$VMID" -- bash -c "echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen && locale-gen"
-pct exec "$VMID" -- update-locale LANG=en_US.UTF-8
-
-echo "[*] Installation des outils de sécurité..."
-pct exec "$VMID" -- apt install -y sudo openssh-server ufw fail2ban apparmor apparmor-utils auditd unattended-upgrades apt-listchanges
-
-echo "[*] Configuration des mises à jour automatiques..."
-pct exec "$VMID" -- dpkg-reconfigure -plow unattended-upgrades
+pct exec "$VMID" -- bash -c "echo 'LANG=en_US.UTF-8' > /etc/locale.conf"
 
 echo "[*] Configuration du groupe sudo..."
-pct exec "$VMID" -- bash -c "grep -q '^%sudo' /etc/sudoers || echo '%sudo ALL=(ALL:ALL) ALL' >> /etc/sudoers"
+pct exec "$VMID" -- grep -q '^%wheel' /etc/sudoers || echo '%wheel ALL=(ALL) ALL' >> /etc/sudoers
 
 echo "[*] Création de l'utilisateur $USER_NAME non-root avec sudo sans mot de passe..."
 if ! pct exec "$VMID" -- id "$USER_NAME" &>/dev/null; then
-    pct exec "$VMID" -- bash -c "useradd -m -s /bin/bash -G sudo $USER_NAME"
+    pct exec "$VMID" -- useradd -m -s /bin/bash -G wheel $USER_NAME
     pct exec "$VMID" -- bash -c "mkdir -p /etc/sudoers.d && echo '$USER_NAME ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/$USER_NAME && chmod 440 /etc/sudoers.d/$USER_NAME"
 fi
 
@@ -110,42 +114,42 @@ echo "[*] Sécurisation des utilisateurs..."
 pct exec "$VMID" -- passwd -l root
 echo "[*] Root désactivé."
 
-echo "[*] Configuration des mots de passe expirables..."
-pct exec "$VMID" -- sed -i 's/^PASS_MAX_DAYS.*/PASS_MAX_DAYS 90/' /etc/login.defs
-pct exec "$VMID" -- sed -i 's/^PASS_MIN_DAYS.*/PASS_MIN_DAYS 10/' /etc/login.defs
-
 echo "[*] Sécurisation de SSH..."
 pct exec "$VMID" -- sed -i 's/^#Port 22/Port 2222/' /etc/ssh/sshd_config
 pct exec "$VMID" -- sed -i 's/^#PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config
 pct exec "$VMID" -- sed -i 's/^#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
 pct exec "$VMID" -- sed -i 's/^#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config
-pct exec "$VMID" -- systemctl stop ssh.socket 2>/dev/null || true
-pct exec "$VMID" -- systemctl disable ssh.socket 2>/dev/null || true
-pct exec "$VMID" -- systemctl restart ssh || systemctl restart sshd
-pct exec "$VMID" -- systemctl enable ssh || systemctl enable sshd
+pct exec "$VMID" -- systemctl enable --now sshd
+pct exec "$VMID" -- systemctl start sshd
+sleep 2
 
-
-echo "[*] Configuration du pare-feu UFW..."
+echo "[*] Installation et configuration de UFW..."
+pct exec "$VMID" -- pacman -Sy --noconfirm ufw
 pct exec "$VMID" -- ufw default deny incoming
 pct exec "$VMID" -- ufw default allow outgoing
-pct exec "$VMID" -- ufw allow 2222/tcp  # Port SSH
-pct exec "$VMID" -- ufw enable
+pct exec "$VMID" -- ufw allow 2222/tcp
+pct exec "$VMID" -- systemctl enable --now ufw
 
 echo "[*] Activation de Fail2Ban..."
+pct exec "$VMID" -- pacman -Sy --noconfirm fail2ban
 pct exec "$VMID" -- systemctl enable --now fail2ban
 
 echo "[*] Désactivation des services inutiles..."
-pct exec "$VMID" -- bash -c 'for service in avahi-daemon cups bluetooth; do systemctl disable --now $service 2>/dev/null; done'
-
-echo "[*] Sécurisation du disque temporaire..."
-pct exec "$VMID" -- bash -c 'echo "tmpfs /tmp tmpfs defaults,noexec,nosuid 0 0" >> /etc/fstab'
-pct exec "$VMID" -- systemctl daemon-reload
-pct exec "$VMID" -- mount -o remount /tmp || echo "Impossible de remonter /tmp"
+pct exec "$VMID" -- systemctl disable --now avahi-daemon.service || true
+pct exec "$VMID" -- systemctl disable --now cups.service || true
+pct exec "$VMID" -- systemctl disable --now bluetooth.service || true
 
 echo "[*] Nettoyage du système..."
-pct exec "$VMID" -- apt autoremove -y && apt autoclean -y
+pct exec "$VMID" -- bash -c "pacman -Rns --noconfirm \$(pacman -Qdtq || true)"
+pct exec "$VMID" -- pacman -Scc --noconfirm
 
-echo "[*] Sécurisation terminée ! Redémarrage recommandé."
+echo "[*] Sécurisation terminée ! Redémarrage recommandé via Proxmox."
 pct reboot "$VMID"
 
+# Configuration réseau si eth0 est down
+pct exec "$VMID" -- ip link set eth0 up
+pct exec "$VMID" -- ip addr add $ip/24 dev eth0
+pct exec "$VMID" -- ip route add default via $gateway
+
+pct exec "$VMID" -- systemctl restart sshd
 echo "Connexion SSH : ssh -p 2222 -i "$CONTENEUR_SSH_KEY" $USER_NAME@$ip"
