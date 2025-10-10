@@ -24,7 +24,7 @@ qm create 1002 \
 qm importdisk 1002 "arch-Linux-x86_64-cloudimg.qcow2" "local-lvm"
 
 # 4. Attacher le disque importé
-qm set 1002 --scsihw virtio-scsi-pci --scsi0 "local-lvm:vm-${TEMPLATE_ID}-disk-0"
+qm set 1002 --scsihw virtio-scsi-pci --scsi0 "local-lvm:vm-1002-disk-0"
 
 # 5. Définir l'ordre de démarrage sur le disque
 qm set 1002 --boot order=scsi0 --bootdisk scsi0
