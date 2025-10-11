@@ -4,7 +4,7 @@ set -e
 # === CONFIGURATION DE BASE ===
 DOMAIN="app.local"         # Nom du domaine local
 IP="127.0.0.1"             # Adresse IP locale
-CERT_DIR="./certs_ssl"     # Dossier de sortie
+CERT_DIR="$HOME/certs_ssl"     # Dossier de sortie
 DAYS_VALID=365             # Durée de validité (jours)
 
 # === FICHIERS ===
