@@ -41,7 +41,7 @@ openssl x509 -req -in "$SERVER_CSR" -CA "$CA_CERT" -CAkey "$CA_KEY" \
 
 echo "🧹 Nettoyage"
 mv $CA_CERT $SERVER_KEY $SERVER_CERT ../
-cd .. && rm -rf ./certs_openssl
+cd .. && rm -rf "$CERT_DIR"
 
 echo "✅ Certificats générés avec succès dans : $CERT_DIR"
 echo
