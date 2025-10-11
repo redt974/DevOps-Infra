@@ -17,6 +17,7 @@ SERIAL_FILE="$CERT_DIR/ca.srl"
 
 # === PRÉPARATION ===
 mkdir -p "$CERT_DIR"
+cd "$CERT_DIR"
 
 echo "🔐 Génération de la clé de la CA..."
 openssl genrsa -out "$CA_KEY" 2048
@@ -39,7 +40,8 @@ openssl x509 -req -in "$SERVER_CSR" -CA "$CA_CERT" -CAkey "$CA_KEY" \
   -extfile <(echo "subjectAltName=DNS:$DOMAIN,IP:$IP")
 
 echo "🧹 Nettoyage"
-rm -rf "$CA_KEY" "$SERVER_CSR" "$SERIAL_FILE"
+mv $CA_CERT $SERVER_KEY $SERVER_CERT ../
+cd .. && rm -rf "$CERT_DIR"
 
 echo "✅ Certificats générés avec succès dans : $CERT_DIR"
 echo
