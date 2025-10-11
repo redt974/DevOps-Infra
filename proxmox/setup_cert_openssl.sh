@@ -5,6 +5,7 @@ set -e
 USER_PROXMOX=root
 PVE_HOSTNAME="proxmox.local"
 PVE_IP="192.168.10.180"
+CERT_DIR="./certs_openssl"
 CA_KEY="certificat_ca.key"
 CA_CERT="certificat_ca.crt"
 SERVER_KEY="serveur_ca.key"
@@ -28,9 +29,9 @@ sudo tee /etc/hosts <<EOF
 $PVE_IP $PVE_HOSTNAME
 EOF
 
-echo "📁 Création d'un dossier de travail : ./certs_openssl"
-mkdir -p certs_openssl
-cd certs_openssl
+echo "📁 Création d'un dossier de travail : $CERT_DIR"
+mkdir -p "$CERT_DIR"
+cd "$CERT_DIR"
 
 echo "🔐 Génération de la clé de la CA..."
 openssl genrsa -out "$CA_KEY" 2048
@@ -77,7 +78,10 @@ else
     ssh -i "$SSH_KEY_PATH" "$USER_PROXMOX@$PVE_IP" "sudo systemctl restart pveproxy"
 fi
 
+echo "🧹 Nettoyage"
+mv $CA_CERT ../
+cd .. && rm -rf "$CERT_DIR"
+
 echo "✅ Configuration terminée avec succès !"
-echo "📁 Les certificats sont disponibles dans le dossier : $(pwd)"
 echo "📜 Le certificat CA est : $CA_CERT"
 echo "🔗 Accès à Proxmox : https://$PVE_HOSTNAME:8006"
