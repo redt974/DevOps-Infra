@@ -10,7 +10,7 @@ apply:
 	./script.sh
 
 destroy:
-	terraform destroy -auto-approve
+	./destroy.sh
 
 fmt:
 	terraform fmt -recursive
