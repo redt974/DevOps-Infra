@@ -1,0 +1,6 @@
+- name: Web servers
+  hosts: webservers
+  become: yes
+  gather_facts: yes
+  roles:
+    - web/nginx

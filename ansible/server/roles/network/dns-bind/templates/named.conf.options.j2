@@ -1,0 +1,11 @@
+options {
+    directory "/var/cache/bind";
+    recursion yes;
+    allow-query { any; };
+    forwarders {
+        {% for ip in dns_forwarders %} {{ ip }}; {% endfor %}
+    };
+    dnssec-validation no;
+    auth-nxdomain no;
+    listen-on { any; };
+};

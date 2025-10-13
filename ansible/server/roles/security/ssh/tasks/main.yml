@@ -1,0 +1,22 @@
+---
+- name: Install openssh-server if needed
+  package:
+    name: "{{ 'openssh-server' if ansible_facts['os_family'] == 'Debian' else 'openssh' }}"
+    state: present
+
+- name: Deploy hardened sshd_config
+  template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    owner: root
+    group: root
+    mode: "0600"
+  notify: Restart ssh
+
+- name: Ensure SSH service is enabled and running
+  service:
+    name: "{{ 'ssh' if ansible_facts['os_family'] == 'Debian' else 'sshd' }}"
+    state: started
+    enabled: yes
+
+# handlers

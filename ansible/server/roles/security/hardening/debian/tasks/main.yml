@@ -1,0 +1,126 @@
+- name: Install security tools
+  apt:
+    name:
+      - ufw
+      - fail2ban
+      - apparmor
+      - apparmor-utils
+      - auditd
+      - unattended-upgrades
+      - apt-listchanges
+    state: present
+    update_cache: true
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Configure unattended upgrades
+  command: dpkg-reconfigure -plow unattended-upgrades
+  args:
+    creates: /etc/apt/apt.conf.d/20auto-upgrades
+
+- name: Disable root login
+  user:
+    name: root
+    password_lock: true
+
+- name: Configure password expiration
+  lineinfile:
+    path: /etc/login.defs
+    regexp: "^{{ item.key }}"
+    line: "{{ item.key }} {{ item.value }}"
+  loop:
+    - { key: "PASS_MAX_DAYS", value: "90" }
+    - { key: "PASS_MIN_DAYS", value: "10" }
+
+- name: Deploy hardened sshd_config
+  template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart SSH
+
+- name: Ensure SSH directory exists
+  become_user: "{{ ansible_user }}"
+  file:
+    path: "/home/{{ ansible_user }}/.ssh"
+    state: directory
+    mode: '0700'
+
+- name: Generate SSH key for {{ ansible_user }}
+  become_user: "{{ ansible_user }}"
+  community.crypto.openssh_keypair:
+    path: "/home/{{ ansible_user }}/.ssh/id_rsa"
+    type: rsa
+    size: 4096
+    comment: "{{ ansible_user }}@{{ inventory_hostname }}"
+    force: false
+  register: ssh_keygen
+
+- name: Add public key to authorized_keys
+  become_user: "{{ ansible_user }}"
+  copy:
+    content: "{{ ssh_keygen.public_key }}"
+    dest: "/home/{{ ansible_user }}/.ssh/authorized_keys"
+    mode: '0600'
+
+- name: Configure UFW default deny incoming
+  community.general.ufw:
+    state: enabled
+    policy: deny
+    direction: in
+
+- name: Allow SSH port in UFW
+  community.general.ufw:
+    rule: allow
+    port: 2222
+    proto: tcp
+
+- name: Allow outgoing traffic
+  community.general.ufw:
+    rule: allow
+    direction: out
+
+- name: Disable unnecessary services
+  service:
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+  ignore_errors: true
+  loop:
+    - avahi-daemon
+    - cups
+    - bluetooth
+
+- name: Enable AppArmor
+  service:
+    name: apparmor
+    state: started
+    enabled: true
+
+- name: Enable Fail2Ban
+  service:
+    name: fail2ban
+    state: started
+    enabled: true
+
+- name: Enable AuditD
+  service:
+    name: auditd
+    state: started
+    enabled: true
+
+- name: Secure temporary directory
+  lineinfile:
+    path: /etc/fstab
+    line: "tmpfs /tmp tmpfs defaults,noexec,nosuid 0 0"
+    state: present
+
+- name: Remount /tmp
+  command: mount -o remount /tmp
+  ignore_errors: true
+
+- name: Cleanup unused packages
+  apt:
+    autoremove: yes
+    autoclean: yes

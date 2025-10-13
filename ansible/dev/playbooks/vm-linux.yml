@@ -1,0 +1,74 @@
+---
+- name: Configurer la VM avec les logiciels et services sous Linux
+  hosts: all
+
+  become: true
+  gather_facts: true
+  vars_files:
+    - common.yml
+
+  tasks:
+    ### Détectionn de l'OS et de sa Version ###
+    - name: Debug OS
+      debug:
+        msg: "Système détecté : {{ ansible_facts.distribution }} {{ ansible_facts.distribution_version }}"
+
+    ### Mise à jour du système ###
+    - name: Mettre à jour le système
+      package:
+        name: "*"
+        state: latest
+      when: ansible_facts.distribution in ["Debian", "Ubuntu"]
+
+    ### Mettre à jour les dépôts ###
+    - name: Mettre à jour les dépôts
+      ansible.builtin.apt:
+        update_cache: yes
+    
+    ### Installer OpenVPN et configurer un client ###
+    - name: Installer OpenVPN et configurer un client
+      import_tasks: logiciels/vpn.yml
+
+    ### Installation des Logiciels essentiels : ###
+    - name: Installer de logiciels essentiels
+      import_tasks: logiciels/utils.yml
+
+    - name: Installer du serveur VNC
+      import_tasks: logiciels/vnc.yml
+      
+    ### Installation des Logiciels : ###
+    - name: Installer de logiciels sous APT
+      import_tasks: logiciels/apt.yml
+
+    - name: Installer des logiciels selon la liste spécifiée
+      import_tasks: logiciels/deb.yml
+
+    - name: Installer du logiciels sous fichier compressé
+      import_tasks: logiciels/compress.yml
+
+    - name: "Installer du logiciel : XAMPP"
+      import_tasks: logiciels/xampp.yml
+      when: "'xampp' in software_list" 
+
+    - name: "Installer du logiciel : Node.js"
+      import_tasks: logiciels/nodejs.yml
+      when: "'nodejs' in software_list"
+    
+    - name: "Installer du logiciel : .NET"
+      import_tasks: logiciels/dotnet.yml
+      when: "'dotnet' in software_list"
+
+    - name: "Installer du logiciel : Jenkins"
+      import_tasks: logiciels/jenkins.yml
+      when: "'jenkins' in software_list"
+
+    ### Installation de Visual Studio Code et de ces Extensions : ###
+    - name: Installer de Visual Studio Code et ses Extensions
+      import_tasks: logiciels/vscode.yml
+
+    ### Redémarrage du système : ###
+    - name: Reboot the system
+      reboot:
+        msg: "Reboot by Ansible"
+        pre_reboot_delay: 5
+        post_reboot_delay: 10

@@ -1,0 +1,5 @@
+---
+- name: Restart bind
+  service:
+    name: "{{ 'bind9' if ansible_facts['os_family'] == 'Debian' else 'named' }}"
+    state: restarted

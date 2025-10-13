@@ -1,0 +1,28 @@
+### Installer XAMPP ###
+- name: Installer XAMPP
+  block:
+    - name: Télécharger l'installateur XAMPP
+      ansible.builtin.get_url:
+        url: "https://sourceforge.net/projects/xampp/files/XAMPP%20Linux/8.2.12/xampp-linux-x64-8.2.12-0-installer.run?timestamp={{ (now | int) }}"
+        dest: /tmp/xampp-installer.run
+        mode: 0755
+        force: yes
+      register: download_xampp
+      until: download_xampp.status_code == 200
+      retries: 3
+      delay: 5  # Wait 5 seconds between retries
+
+    - name: Exécuter l'installateur XAMPP en mode silencieux
+      ansible.builtin.shell: sudo /tmp/xampp-installer.run --mode unattended
+      when: download_xampp.status_code == 200
+  
+    - name: Ajouter un alias pour ouvrir le panneau de contrôle XAMPP
+      ansible.builtin.lineinfile:
+        path: /home/{{ ansible_user }}/.bashrc
+        line: "alias xampp='sudo /opt/lampp/manager-linux-x64.run'"
+        state: present
+
+    - name: Recharger .bashrc pour les sessions actuelles
+      ansible.builtin.shell: source /home/{{ ansible_user }}/.bashrc
+      args:
+        executable: /bin/bash

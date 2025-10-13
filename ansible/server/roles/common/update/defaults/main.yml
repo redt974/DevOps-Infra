@@ -1,0 +1,10 @@
+---
+# packages to always ensure present
+common_packages:
+  - git
+  - htop
+  - curl
+  - wget
+  - ca-certificates
+  - vim
+  - nano

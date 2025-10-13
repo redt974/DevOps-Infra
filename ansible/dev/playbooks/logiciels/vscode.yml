@@ -1,0 +1,90 @@
+### Installation de Visual Studio Code ###
+- name: "Installation de Visual Studio Code"
+  block:
+      ### Installer la dépendance libasound2 avant VSCode ###
+    - name: Installer la dépendance libasound2
+      apt:
+        name: libasound2
+        state: present
+        update_cache: yes
+      when: ansible_facts.distribution in ["Debian"]
+
+    - name: Installer la dépendance libasound2t64
+      apt:
+        name: libasound2
+        state: present
+        update_cache: yes
+      when: ansible_facts.distribution in ["Ubuntu"]
+
+    ### Télécharger et installer Visual Studio Code ###
+    - name: Télécharger VSCode
+      get_url:
+        url: https://go.microsoft.com/fwlink/?LinkID=760868
+        dest: /tmp/vscode.deb
+        timeout: 30
+        force: yes
+        validate_certs: true
+      when: ansible_facts.distribution in ["Debian", "Ubuntu"]
+
+    - name: Installer VSCode via le fichier deb
+      apt:
+        deb: /tmp/vscode.deb
+      when: ansible_facts.distribution in ["Debian", "Ubuntu"]
+
+### Installation des Extensions de Visual Studio Code ###
+- name: "Installation des Extensions de Visual Studio Code"
+  block:
+    - name: Créer le répertoire des extensions VSCode
+      file:
+        path: "/home/{{ ansible_user }}/.vscode/extensions"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
+      become: true
+
+    - name: Installer les extensions VSCode
+      shell: >
+        sudo -u {{ ansible_user }} code --install-extension {{ item }} --force
+      loop: "{{ vscode_extensions | default([]) }}"
+      loop_control:
+        label: "{{ item }}"
+      environment:
+        NODE_OPTIONS: "--max-http-header-size=80000"
+      when: vscode_extensions | length > 0
+
+    - name: Vérifier les extensions installées via VSCode
+      shell: >
+        sudo -u {{ ansible_user }} code --list-extensions
+      register: installed_extensions
+      changed_when: false
+      ignore_errors: true
+
+    - name: Afficher les extensions installées
+      debug:
+        msg: "Extensions VSCode installées : {{ installed_extensions.stdout_lines }}"
+
+    - name: Vérifier si le fichier `extensions.json` existe
+      stat:
+        path: "/home/{{ ansible_user }}/.vscode/extensions/extensions.json"
+      register: extensions_json_exists
+
+    - name: Créer ou mettre à jour le fichier extensions.json
+      copy:
+        content: |
+          [
+            {% for extension in vscode_extensions %}
+            "{{ extension }}"{{ "," if not loop.last }}
+            {% endfor %}
+          ]
+        dest: "/home/{{ ansible_user }}/.vscode/extensions/extensions.json"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0644'
+      when: vscode_extensions | length > 0
+
+    - name: Supprimer le fichier extensions.json s'il existe et contient des erreurs
+      file:
+        path: "/home/{{ ansible_user }}/.vscode/extensions/extensions.json"
+        state: absent
+      when: extensions_json_exists.stat.exists and vscode_extensions | length == 0

@@ -1,0 +1,27 @@
+---
+- name: Ensure common packages are installed (package module)
+  become: true
+  package:
+    name: "{{ common_packages }}"
+    state: present
+
+- name: Update package cache and upgrade
+  become: true
+  block:
+    - name: apt - update/upgrade (Debian/Ubuntu)
+      apt:
+        update_cache: yes
+        upgrade: dist
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: pacman - update system (Arch)
+      pacman:
+        update_cache: yes
+        upgrade: yes
+      when: ansible_facts['os_family'] == 'Archlinux'
+
+    - name: dnf - update system (RedHat)
+      dnf:
+        name: "*"
+        state: latest
+      when: ansible_facts['os_family'] == 'RedHat'

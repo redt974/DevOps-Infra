@@ -1,0 +1,161 @@
+- name: Ensure wireguard packages installed
+  package:
+    name: "{{ ['wireguard','wireguard-tools'] if ansible_facts['os_family'] != 'Archlinux' else ['wireguard-tools'] }}"
+    state: present
+  become: true
+
+- name: Ensure /etc/wireguard and clients directory exist
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0700"
+    owner: root
+    group: root
+  loop:
+    - /etc/wireguard
+    - /etc/wireguard/clients
+  become: true
+
+# --- Server key management ---
+- name: Check if server private key exists
+  stat:
+    path: /etc/wireguard/server_private.key
+  register: server_key_stat
+  become: true
+
+- name: Generate server private key (if missing)
+  command: wg genkey
+  register: generated_server_privkey
+  when: not server_key_stat.stat.exists
+  become: true
+
+- name: Save server private key (only when generated)
+  copy:
+    dest: /etc/wireguard/server_private.key
+    content: "{{ generated_server_privkey.stdout }}"
+    owner: root
+    group: root
+    mode: "0600"
+  when:
+    - generated_server_privkey is defined
+    - generated_server_privkey.stdout is defined
+    - generated_server_privkey.stdout | length > 0
+  become: true
+
+- name: Read server private key
+  slurp:
+    src: /etc/wireguard/server_private.key
+  register: server_priv_raw
+  become: true
+
+- name: Set server private key fact
+  slurp:
+    src: /etc/wireguard/server_private.key
+  register: server_priv_raw
+
+- set_fact:
+    wg_private_key: "{{ (server_priv_raw.content | b64decode).strip() }}"
+
+
+# --- Ensure client private keys exist (generate if missing) ---
+- name: Ensure each client has a private key (generate if missing)
+  block:
+    - name: Check client key exists
+      stat:
+        path: "/etc/wireguard/clients/{{ client.name }}.key"
+      register: client_key_stat
+      loop: "{{ wg_clients }}"
+      loop_control:
+        loop_var: client
+      become: true
+
+    - name: Generate missing client private keys
+      command: wg genkey
+      register: genkey_results
+      args:
+        # no creates here: we use stat results to decide
+        _uses_shell: false
+      loop: "{{ wg_clients | zip(client_key_stat.results) | map('flatten', 1) | list }}"
+      loop_control:
+        label: "{{ item.0.name }}"
+      when: not item.1.stat.exists
+      become: true
+
+    # genkey_results will contain results for attempts; we save them to files below
+    - name: Save generated private keys to files
+      copy:
+        dest: "/etc/wireguard/clients/{{ wg_clients[idx].name }}.key"
+        content: "{{ genkey_results.results[idx].stdout }}"
+        owner: root
+        group: root
+        mode: "0600"
+      loop: "{{ range(0, (genkey_results.results|length)) | list }}"
+      loop_control:
+        index_var: idx
+      when:
+        - genkey_results is defined
+        - genkey_results.results[idx].stdout is defined
+        - genkey_results.results[idx].stdout | length > 0
+      become: true
+
+  when: wg_clients | length > 0
+
+# --- Build client public keys list from files (idempotent) ---
+- name: Read all client private keys (slurp)
+  slurp:
+    src: "/etc/wireguard/clients/{{ item.name }}.key"
+  register: client_priv_slurps
+  loop: "{{ wg_clients }}"
+  loop_control:
+    loop_var: item
+  become: true
+
+- name: Generate public keys from private keys
+  command: bash -c "echo '{{ (item.content | b64decode).strip() }}' | wg pubkey"
+  register: client_pub_results
+  loop: "{{ client_priv_slurps.results }}"
+  loop_control:
+    loop_var: item
+  become: true
+
+- name: Attach public keys to wg_clients fact
+  set_fact:
+    wg_clients: >-
+      {{
+        wg_clients | zip(client_pub_results.results)
+        | map('combine', [{'public_key': item.1.stdout|default('')}])
+        | list
+      }}
+
+# --- Deploy configuration ---
+- name: Deploy wg0.conf
+  template:
+    src: wg0.conf.j2
+    dest: /etc/wireguard/{{ wg_interface }}.conf
+    owner: root
+    group: root
+    mode: "0600"
+  notify: Restart wg
+  become: true
+
+- name: Ensure IP forwarding sysctl (IPv4)
+  sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    state: present
+    reload: yes
+  become: true
+
+# Optional: ensure firewall nat rule persists / or use PostUp in wg conf (we keep PostUp)
+- name: Ensure wg-quick service is enabled (but don't fail deploy if invalid config)
+  systemd:
+    name: wg-quick@{{ wg_interface }}
+    enabled: yes
+  become: true
+
+# --- Handlers ---
+- name: Restart wg
+  systemd:
+    name: wg-quick@{{ wg_interface }}
+    state: restarted
+  become: true

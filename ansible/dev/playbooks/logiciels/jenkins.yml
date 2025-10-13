@@ -1,0 +1,37 @@
+### Installer Jenkins ###
+- name: Installer Jenkins
+  block:
+    # Télécharger la clé GPG de Jenkins
+    - name: Télécharger et ajouter la clé GPG pour Jenkins
+      ansible.builtin.get_url:
+        url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+        dest: /usr/share/keyrings/jenkins-keyring.asc
+        mode: '0644'
+
+    # Ajouter le dépôt APT de Jenkins
+    - name: Ajouter le dépôt Jenkins
+      ansible.builtin.copy:
+        content: |
+          deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/
+        dest: /etc/apt/sources.list.d/jenkins.list
+        mode: '0644'
+
+    # Mettre à jour le cache APT
+    - name: Mettre à jour le cache APT
+      ansible.builtin.apt:
+        update_cache: yes
+
+    # Installer OpenJDK 17 et fontconfig (prérequis pour Jenkins)
+    - name: Installer les prérequis pour Jenkins
+      ansible.builtin.apt:
+        name:
+          - fontconfig
+          - openjdk-17-jre
+        state: present
+
+    # Installer Jenkins
+    - name: Installer Jenkins
+      ansible.builtin.apt:
+        name: jenkins
+        state: present
+  when: "'jenkins' in software_list"

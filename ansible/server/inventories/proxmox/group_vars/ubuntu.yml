@@ -1,0 +1,2 @@
+deploy_user_ssh_authorized_keys:
+  - "{{ lookup('file', '~/.ssh/serveur-ubuntu.local_id_rsa.pub') }}"

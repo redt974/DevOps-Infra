@@ -1,0 +1,8 @@
+- name: Base setup on all hosts
+  hosts: allhosts
+  gather_facts: yes
+  become: yes
+  roles:
+    - common/sudo
+    - common/update
+    - common/users

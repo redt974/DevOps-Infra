@@ -1,0 +1,17 @@
+[Interface]
+Address = {{ wg_address }}
+ListenPort = {{ wg_port }}
+PrivateKey = {{ wg_private_key }}
+
+# NAT / Routing
+PostUp = iptables -A FORWARD -i {{ wg_interface }} -j ACCEPT; iptables -t nat -A POSTROUTING -o {{ ansible_default_ipv4.interface }} -j MASQUERADE
+PostDown = iptables -D FORWARD -i {{ wg_interface }} -j ACCEPT; iptables -t nat -D POSTROUTING -o {{ ansible_default_ipv4.interface }} -j MASQUERADE
+
+{% for client in wg_clients %}
+{% if client.public_key is defined and client.public_key | length > 0 %}
+# client: {{ client.name }}
+[Peer]
+PublicKey = {{ client.public_key }}
+AllowedIPs = {{ client.address }}
+{% endif %}
+{% endfor %}

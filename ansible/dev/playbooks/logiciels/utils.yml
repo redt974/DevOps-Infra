@@ -1,0 +1,92 @@
+- name: Installer des logiciels pratiques
+  become: true
+  block:
+    ### Installer git ###
+    - name: Installer Git 
+      package:
+        name: git
+        state: present
+
+    ### Installer curl ###
+    - name: Installer curl
+      package:
+        name: curl
+        state: present
+
+    ### Installer wget ###
+    - name: Installer wget
+      package:
+        name: wget
+        state: present
+
+    ### Installer unzip ###
+    - name: Installer unzip
+      package:
+        name: unzip
+        state: present
+
+    ### Installer gzip ###
+    - name: Installer gzip
+      package:
+        name: gzip
+        state: present
+
+    # ### Installer htop ###
+    # - name: Installer htop
+    #   package:
+    #     name: htop
+    #     state: present
+
+    ### Installer vim ###
+    - name: Installer vim
+      package:
+        name: vim
+        state: present
+
+    ### Installer nano ###
+    - name: Installer nano
+      package:
+        name: nano
+        state: present
+
+    ### Installer tree ###
+    - name: Installer tree
+      package:
+        name: tree
+        state: present
+
+    ### Installer net-tools ###
+    - name: Installer net-tools
+      package:
+        name: net-tools
+        state: present
+
+    ### Installer traceroute ###
+    - name: Installer traceroute
+      package:
+        name: traceroute
+        state: present
+
+    ### Installer nmap ###
+    - name: Installer nmap
+      package:
+        name: nmap
+        state: present
+
+    ### Installer build-essential ###
+    - name: Installer build-essential
+      package:
+        name: build-essential
+        state: present
+
+    # ### Installer software-properties-common ###
+    # - name: Installer software-properties-common
+    #   package:
+    #     name: software-properties-common
+    #     state: present
+
+    # ### Installer man-db (pour les pages de manuel) ###
+    # - name: Installer man-db
+    #   package:
+    #     name: man-db
+    #     state: present

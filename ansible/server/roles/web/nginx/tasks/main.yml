@@ -1,0 +1,97 @@
+---
+- name: Ensure nginx installed
+  block:
+    - name: Remove conflicting nginx package (Arch only)
+      pacman:
+        name: nginx
+        state: absent
+      when: ansible_facts['os_family'] == 'Archlinux'
+      become: true
+
+    - name: Install nginx
+      package:
+        name: "{{ 'nginx-mainline' if ansible_facts['os_family'] == 'Archlinux' else 'nginx' }}"
+        state: present
+      become: true
+
+- name: Define web user and group based on OS
+  set_fact:
+    web_user: "{{ 'http' if ansible_facts['os_family'] == 'Archlinux' else 'www-data' }}"
+    web_group: "{{ 'http' if ansible_facts['os_family'] == 'Archlinux' else 'www-data' }}"
+
+- name: Ensure site root exists
+  file:
+    path: "{{ nginx_site_root }}"
+    state: directory
+    owner: "{{ web_user }}"
+    group: "{{ web_group }}"
+    mode: "0755"
+  become: true
+
+- name: Upload a simple index.html
+  copy:
+    dest: "{{ nginx_site_root }}/index.html"
+    content: "<html><body><h1>Site {{ nginx_site_name }} deployed via Ansible</h1></body></html>"
+    owner: "{{ web_user }}"
+    group: "{{ web_group }}"
+    mode: "0644"
+  become: true
+
+- name: Ensure nginx conf.d directory exists (Arch only)
+  file:
+    path: /etc/nginx/conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: ansible_facts['os_family'] == 'Archlinux'
+  become: true
+
+- name: Ensure nginx includes conf.d on Arch
+  lineinfile:
+    path: /etc/nginx/nginx.conf
+    insertafter: 'http {'
+    line: '    include /etc/nginx/conf.d/*.conf;'
+  when: ansible_facts['os_family'] == 'Archlinux'
+  become: true
+
+- name: Deploy nginx site config
+  template:
+    src: nginx-site.j2
+    dest: >-
+      {{ '/etc/nginx/sites-available/' + nginx_site_name
+         if ansible_facts['os_family'] != 'Archlinux'
+         else '/etc/nginx/conf.d/' + nginx_site_name + '.conf' }}
+  notify: Reload nginx
+  become: true
+
+- name: Enable site (symlink, Debian/Ubuntu only)
+  file:
+    src: "/etc/nginx/sites-available/{{ nginx_site_name }}"
+    dest: "/etc/nginx/sites-enabled/{{ nginx_site_name }}"
+    state: link
+  when: ansible_facts['os_family'] != 'Archlinux'
+  notify: Reload nginx
+  become: true
+
+- name: Ensure default site disabled (Debian/Ubuntu)
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  when: ansible_facts['os_family'] != 'Archlinux'
+  notify: Reload nginx
+  ignore_errors: yes
+  become: true
+
+- name: Ensure nginx service started
+  service:
+    name: nginx
+    state: started
+    enabled: yes
+  become: true
+
+- name: Reload nginx (Arch and Debian/Ubuntu)
+  service:
+    name: nginx
+    state: reloaded
+  become: true

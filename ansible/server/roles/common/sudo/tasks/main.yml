@@ -1,0 +1,13 @@
+---
+- name: Ensure sudo group exists
+  group:
+    name: "{{ sudo_group }}"
+    state: present
+
+- name: Add sudoers file for group (NOPASSWD)
+  copy:
+    dest: "/etc/sudoers.d/99-{{ sudo_group }}-nopasswd"
+    content: "%{{ sudo_group }} ALL=(ALL) NOPASSWD: ALL\n"
+    owner: root
+    group: root
+    mode: "0440"

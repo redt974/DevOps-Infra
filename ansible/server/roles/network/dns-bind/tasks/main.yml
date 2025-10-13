@@ -1,0 +1,57 @@
+---
+- name: Install bind9
+  package:
+    name: "{{ 'bind9' if ansible_facts['os_family'] == 'Debian' else 'bind' }}"
+    state: present
+
+- name: Ensure bind service enabled and started
+  service:
+    name: "{{ 'bind9' if ansible_facts['os_family'] == 'Debian' else 'named' }}"
+    state: started
+    enabled: yes
+
+- name: Define bind configuration directory fact
+  set_fact:
+    bind_conf_dir: "{{ '/etc/bind' if ansible_facts['os_family'] == 'Debian' else '/etc/named' }}"
+
+- name: Ensure bind configuration directory exists
+  file:
+    path: "{{ bind_conf_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Deploy named.conf.options (Debian/Ubuntu) or named.conf (Arch)
+  template:
+    src: named.conf.options.j2
+    dest: "{{ bind_conf_dir }}/{{ 'named.conf.options' if ansible_facts['os_family'] == 'Debian' else 'named.conf' }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart bind
+
+- name: (optional) create a simple forward zone file
+  copy:
+    dest: "{{ bind_conf_dir }}/db.{{ dns_zone }}"
+    content: |
+      $TTL 604800
+      @   IN  SOA ns.{{ dns_zone }}. root.{{ dns_zone }}. (
+              2         ; Serial
+              604800    ; Refresh
+              86400     ; Retry
+              2419200   ; Expire
+              604800 )  ; Negative Cache TTL
+      ;
+      @       IN  NS  ns.
+      ns      IN  A   127.0.0.1
+      www     IN  A   127.0.0.1
+  notify: Restart bind
+
+- name: Ensure zones included in named.conf.local (Debian only)
+  lineinfile:
+    path: /etc/bind/named.conf.local
+    line: 'zone "{{ dns_zone }}" { type master; file "/etc/bind/db.{{ dns_zone }}"; };'
+    create: yes
+  when: ansible_facts['os_family'] == 'Debian'
+  notify: Restart bind
+
+# Handlers

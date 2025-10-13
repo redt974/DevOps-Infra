@@ -1,0 +1,50 @@
+- name: Installer MongoDB
+  block:
+
+    ### Détectionn de l'OS et de sa Version ###
+    - name: Debug OS
+      debug:
+        msg: "Système détecté : {{ ansible_facts.distribution }} {{ ansible_facts.distribution_version }}"
+
+    # Téléchargement et installation de MongoDB
+    - name: Download MongoDB server package
+      get_url:
+        url: "https://repo.mongodb.org/apt/ubuntu/dists/jammy/mongodb-org/8.0/multiverse/binary-amd64/mongodb-org-server_8.0.4_amd64.deb"
+        dest: "/tmp/mongodb-org-server_8.0.4_amd64.deb"
+      when: ansible_facts.distribution == "Ubuntu"
+
+    - name: Download MongoDB server package
+      get_url:
+        url: "https://repo.mongodb.org/apt/debian/dists/jammy/mongodb-org/8.0/multiverse/binary-amd64/mongodb-org-server_8.0.4_amd64.deb"
+        dest: "/tmp/mongodb-org-server_8.0.4_amd64.deb"
+      when: ansible_facts.distribution == "Debian"
+    
+    - name: Install MongoDB server
+      apt:
+        name: /tmp/mongodb-org-server_8.0.4_amd64.deb
+        state: present
+      become: true
+
+    # Téléchargement et installation de MongoDB Shell
+    - name: Download MongoDB Shell package
+      get_url:
+        url: "https://downloads.mongodb.com/compass/mongodb-mongosh_2.3.6_amd64.deb"
+        dest: "/tmp/mongodb-mongosh_2.3.6_amd64.deb"
+
+    - name: Install MongoDB Shell
+      apt:
+        name: /tmp/mongodb-mongosh_2.3.6_amd64.deb
+        state: present
+      become: true
+
+    # Démarrage et activation de MongoDB
+    - name: Start MongoDB service
+      service:
+        name: mongod
+        state: started
+
+    - name: Enable MongoDB service at boot
+      systemd:
+        name: mongod
+        enabled: true
+  when: "'mongodb' in software_list"

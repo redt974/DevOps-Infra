@@ -1,0 +1,129 @@
+### Installer et configurer OpenVPN ###
+- name: Installer et configurer OpenVPN
+  block:
+    - name: Mettre à jour les paquets
+      apt:
+        update_cache: yes
+
+    - name: Installer OpenVPN et Easy-RSA
+      apt:
+        name:
+          - openvpn
+          - easy-rsa
+        state: present
+
+    - name: Copier les fichiers de configuration Easy-RSA
+      copy:
+        src: /usr/share/easy-rsa/
+        dest: /etc/openvpn/easy-rsa/
+        remote_src: yes
+
+    - name: Initialiser Easy-RSA
+      command: "/etc/openvpn/easy-rsa/easyrsa init-pki"
+
+    - name: Construire l'autorité de certification (CA)
+      command: "/etc/openvpn/easy-rsa/easyrsa build-ca nopass"
+
+    - name: Générer le certificat du serveur
+      command: "/etc/openvpn/easy-rsa/easyrsa build-server-full server nopass"
+
+    - name: Générer le Diffie-Hellman
+      command: "/etc/openvpn/easy-rsa/easyrsa gen-dh"
+
+    - name: Générer la clé TLS-Auth
+      command: "openvpn --genkey secret /etc/openvpn/ta.key"
+
+    - name: Configurer OpenVPN
+      copy:
+        dest: /etc/openvpn/server.conf
+        content: |
+          port 1194
+          proto udp
+          dev tun
+          ca /etc/openvpn/easy-rsa/pki/ca.crt
+          cert /etc/openvpn/easy-rsa/pki/issued/server.crt
+          key /etc/openvpn/easy-rsa/pki/private/server.key
+          dh /etc/openvpn/easy-rsa/pki/dh.pem
+          tls-auth /etc/openvpn/ta.key 0
+          server 10.8.0.0 255.255.255.252
+          ifconfig-pool-persist /var/log/openvpn/ipp.txt
+          push "route {{ vpn_ip }} 255.255.255.252"
+          keepalive 10 120
+          cipher AES-256-CBC
+          auth SHA256
+          persist-key
+          persist-tun
+          status /var/log/openvpn/status.log
+          verb 3
+
+    - name: Activer l'IP Forwarding
+      lineinfile:
+        path: /etc/sysctl.conf
+        line: 'net.ipv4.ip_forward=1'
+        state: present
+
+    - name: Appliquer les modifications de sysctl
+      command: sysctl -p
+
+    - name: Ouvrir le port UDP 1194
+      ufw:
+        rule: allow
+        port: 1194
+        proto: udp
+
+    - name: Démarrer et activer OpenVPN
+      systemd:
+        name: openvpn@server
+        state: started
+        enabled: yes
+
+    - name: Générer le certificat client
+      command: "/etc/openvpn/easy-rsa/easyrsa build-client-full client1 nopass"
+
+- name: Récupérer les fichiers nécessaires pour le client
+  fetch:
+    src: "/etc/openvpn/easy-rsa/pki/ca.crt"
+    dest: "{{ vm_dir }}/ca.crt"
+    flat: yes
+
+- name: Récupérer le certificat client
+  fetch:
+    src: "/etc/openvpn/easy-rsa/pki/issued/client1.crt"
+    dest: "{{ vm_dir }}/client1.crt"
+    flat: yes
+
+- name: Récupérer la clé privée du client
+  fetch:
+    src: "/etc/openvpn/easy-rsa/pki/private/client1.key"
+    dest: "{{ vm_dir }}/client1.key"
+    flat: yes
+
+- name: Créer un fichier de configuration client
+  copy:
+    dest: "{{ vm_dir }}/client.ovpn"
+    content: |
+      client
+      dev tun
+      proto udp
+      remote 10.8.0.1 1194
+      resolv-retry infinite
+      nobind
+      persist-key
+      persist-tun
+      remote-cert-tls server
+      cipher AES-256-CBC
+      auth SHA256
+      verb 3
+      ifconfig {{ vpn_ip }} 255.255.255.252
+      <ca>
+      {{ lookup('file', '{{ vm_dir }}/ca.crt') }}
+      </ca>
+      <cert>
+      {{ lookup('file', '{{ vm_dir }}/client1.crt') }}
+      </cert>
+      <key>
+      {{ lookup('file', '{{ vm_dir }}/client1.key') }}
+      </key>
+      <tls-auth>
+      {{ lookup('file', '{{ vm_dir }}/ta.key') }}
+      </tls-auth>

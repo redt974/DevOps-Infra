@@ -1,0 +1,38 @@
+### Installer Node.js via NVM ###
+- name: Installer Node.js via NVM
+  become_user: "{{ ansible_user }}"  
+  block:
+    - name: Télécharger et installer NVM
+      shell: |
+        export NVM_DIR="$HOME/.nvm"
+        if [ ! -d "$NVM_DIR" ]; then
+          curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+        fi
+      args:
+        executable: /bin/bash
+
+    - name: Ajouter la configuration NVM dans .bashrc
+      lineinfile:
+        path: ~/.bashrc
+        line: |
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+          [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+
+    - name: Installer Node.js version 22 via NVM
+      shell: |
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        nvm install 22
+        nvm alias default 22
+      args:
+        executable: /bin/bash
+
+    - name: Vérifier l'installation de Node.js et NPM
+      shell: |
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        node -v
+        npm -v
+      args:
+        executable: /bin/bash

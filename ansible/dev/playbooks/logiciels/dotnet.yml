@@ -1,0 +1,45 @@
+### Installer .NET SDK ###
+- name: Installer .NET SDK
+  block:
+  
+    # Debug pour vérifier le système et la version
+    - name: Vérifier le système d'exploitation et la version dans dotnet.yml
+      debug:
+        msg: "OS : {{ ansible_facts.distribution }} | Version : {{ ansible_facts.distribution_version }}"
+
+    - name: Installer les dépôts en fonction du système
+      block:
+        - name: Installer les dépôts pour Ubuntu 24.04 ou 22.04
+          apt_repository:
+            repo: 'ppa:dotnet/backports'
+            state: present
+          when: ansible_facts.distribution == "Ubuntu" and ansible_facts.distribution_version in ["24.04", "22.04"]
+
+        - name: Installer les dépôts pour Ubuntu 20.04
+          shell: |
+            wget https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+            sudo dpkg -i packages-microsoft-prod.deb
+            rm packages-microsoft-prod.deb
+            sudo apt update
+          when: ansible_facts.distribution == "Ubuntu" and ansible_facts.distribution_version == "20.04"
+
+        - name: Installer les dépôts pour Debian
+          shell: |
+            wget https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+            sudo dpkg -i packages-microsoft-prod.deb
+            rm packages-microsoft-prod.deb
+            sudo apt update
+          when: ansible_facts.distribution == "Debian"
+
+    - name: Installer le SDK .NET 9.0
+      apt:
+        name: dotnet-sdk-9.0
+        state: present
+      become: true
+
+    - name: Installer le runtime .NET
+      apt:
+        name: aspnetcore-runtime-9.0
+        state: present
+      become: true
+  when: "'dotnet' in software_list"

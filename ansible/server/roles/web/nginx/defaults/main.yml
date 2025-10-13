@@ -1,0 +1,3 @@
+---
+nginx_site_name: app.local
+nginx_site_root: /var/www/app

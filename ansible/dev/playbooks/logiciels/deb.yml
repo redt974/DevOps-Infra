@@ -1,0 +1,19 @@
+- name: Installer des logiciels sous .deb
+  block:
+    - name: Télécharger les fichiers .deb
+      get_url:
+        url: "{{ item.url }}"
+        dest: "/tmp/{{ item.name }}.deb"
+        mode: '0644'
+      loop:
+        - { name: "discord", url: "https://discord.com/api/download?platform=linux&format=deb" }
+        - { name: "zoom", url: "https://zoom.us/client/latest/zoom_amd64.deb" }
+      when: "{{ item.name in software_list }}"  
+
+    - name: Installer les fichiers .deb
+      command: sudo apt install -y /tmp/{{ item.name }}.deb
+      loop:
+        - { name: "discord" }
+        - { name: "zoom" }
+      when: "{{ item.name in software_list }}"
+

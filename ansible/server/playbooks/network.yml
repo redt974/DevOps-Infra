@@ -1,0 +1,13 @@
+- name: Network services
+  hosts: dns
+  become: yes
+  gather_facts: yes
+  roles:
+    - network/dns-bind
+
+- name: VPN servers
+  hosts: vpn
+  become: yes
+  gather_facts: yes
+  roles:
+    - network/vpn-wireguard

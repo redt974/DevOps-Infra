@@ -1,0 +1,6 @@
+---
+deploy_user: deploy
+deploy_user_uid: 1001
+deploy_user_groups: "sudo"
+deploy_user_shell: /bin/bash
+deploy_user_ssh_authorized_keys: []
