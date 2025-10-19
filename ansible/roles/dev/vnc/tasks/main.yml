@@ -1,0 +1,172 @@
+### Installation et configuration du serveur VNC ###
+- name: "Installation et configuration du serveur VNC"
+  block:
+
+    ### Détection de l'OS et de sa Version ###
+    - name: Debug OS
+      debug:
+        msg: "Système détecté : {{ ansible_facts.distribution }} {{ ansible_facts.distribution_version }}"
+
+    ### Gestion des utilisateurs desktop ###
+    - name: Définir l'utilisateur desktop
+      set_fact:
+        desktop_user: "{{ ansible_env.SUDO_USER | default(ansible_facts.user_id) }}"
+
+    ### Arrêt et suppression des gestionnaires d'affichage concurrents ###
+    - name: Stop DM concurrents
+      systemd:
+        name: "{{ item }}"
+        state: stopped
+        enabled: no
+      loop:
+        - gdm3
+        - sddm
+      ignore_errors: yes
+      when: ansible_facts.packages[item] is defined
+
+    - name: Purge DM concurrents
+      apt:
+        name: "{{ item }}"
+        state: absent
+        purge: yes
+      loop:
+        - gdm3
+        - sddm
+      when: ansible_facts.packages[item] is defined
+
+    ### Installation du serveur X minimal + driver dummy ###
+    - name: Installer le serveur X minimal et driver dummy
+      apt:
+        name:
+          - xserver-xorg
+          - xserver-xorg-core
+          - x11-xserver-utils
+          - xserver-xorg-video-dummy
+          - xinit
+        state: present
+        update_cache: yes
+
+    ### Installation de LightDM et du thème GTK ###
+    - name: Install lightdm et lightdm-gtk-greeter
+      apt:
+        name:
+          - lightdm
+          - lightdm-gtk-greeter
+        state: present
+        update_cache: yes
+
+    - name: Configurer LightDM comme gestionnaire d'affichage par défaut
+      debconf:
+        name: lightdm
+        question: shared/default-x-display-manager
+        value: lightdm
+        vtype: string
+
+    - name: Reconfigurer LightDM
+      command: dpkg-reconfigure -f noninteractive lightdm
+
+    ### Configuration Xorg dummy pour VM headless ###
+    - name: Créer fichier de config Xorg dummy
+      copy:
+        dest: /etc/X11/xorg.conf.d/10-dummy.conf
+        content: |
+          Section "Device"
+              Identifier  "DummyDevice"
+              Driver      "dummy"
+          EndSection
+
+          Section "Monitor"
+              Identifier "DummyMonitor"
+              HorizSync 28-80
+              VertRefresh 48-75
+          EndSection
+
+          Section "Screen"
+              Identifier "DummyScreen"
+              Device     "DummyDevice"
+              Monitor    "DummyMonitor"
+              DefaultDepth 24
+              SubSection "Display"
+                  Depth 24
+                  Modes "1024x768"
+              EndSubSection
+          EndSection
+        owner: root
+        group: root
+        mode: '0644'
+
+    ### Installation d'un environnement GNOME minimal ###
+    - name: Installer un environnement GNOME minimal
+      apt:
+        name:
+          - gnome-shell
+          - gnome-settings-daemon
+          - gnome-control-center
+          - gnome-terminal
+        state: present
+
+    ### Premier reboot pour activer LightDM/GNOME ###
+    - name: Reboot après installation LightDM/GNOME
+      reboot:
+        msg: "Reboot pour activer LightDM et GNOME"
+        pre_reboot_delay: 5
+        post_reboot_delay: 15
+
+- name: "Configurer x11vnc et personnalisation GNOME après reboot"
+  block:
+
+    ### Installation et configuration de x11vnc ###
+    - name: Install x11vnc
+      apt:
+        name: x11vnc
+        state: present
+
+    - name: Set VNC password
+      command: /usr/bin/x11vnc -storepasswd {{ vnc_password }} /etc/x11vnc.pass
+      args:
+        creates: /etc/x11vnc.pass
+
+    - name: Create x11vnc systemd service file
+      copy:
+        dest: /etc/systemd/system/x11vnc.service
+        content: |
+          [Unit]
+          Description=x11vnc service
+          After=graphical.target network-online.target
+          Wants=graphical.target
+
+          [Service]
+          Type=simple
+          ExecStart=/usr/bin/x11vnc -display :0 -auth /var/run/lightdm/root/:0 -forever -loop -noxdamage -rfbauth /etc/x11vnc.pass -rfbport 5900 -shared
+          Restart=on-failure
+
+          [Install]
+          WantedBy=graphical.target
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Reload systemd daemon
+      command: systemctl daemon-reload
+
+    - name: Enable and start x11vnc service
+      systemd:
+        name: x11vnc.service
+        enabled: yes
+        state: started
+
+    ### Personnalisation GNOME pour l'utilisateur desktop ###
+    - name: Désactiver le verrouillage automatique de l'écran
+      become_user: "{{ desktop_user }}"
+      command: gsettings set org.gnome.desktop.screensaver lock-enabled false
+
+    - name: Désactiver les notifications sur l'écran de verrouillage
+      become_user: "{{ desktop_user }}"
+      command: gsettings set org.gnome.desktop.notifications show-in-lock-screen false
+
+    - name: Désactiver le verrouillage de l'écran lors de la mise en veille (Ubuntu)
+      become_user: "{{ desktop_user }}"
+      command: gsettings set org.gnome.desktop.screensaver ubuntu-lock-on-suspend false
+      when: ansible_facts.distribution == "Ubuntu"
+
+  when: ansible_facts.distribution in ["Debian", "Ubuntu"]

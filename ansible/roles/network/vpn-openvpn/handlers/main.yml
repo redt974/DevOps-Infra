@@ -1,0 +1,6 @@
+---
+- name: Restart 
+  systemd:
+    name: 
+    state: restarted
+  become: true

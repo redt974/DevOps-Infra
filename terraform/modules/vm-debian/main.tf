@@ -93,14 +93,14 @@ resource "proxmox_virtual_environment_vm" "vm" {
 
   scsi_hardware = "virtio-scsi-pci"
 
-  # disk {
-  #   interface    = "scsi0"
-  #   iothread     = true
-  #   datastore_id = var.disk.storage
-  #   size         = var.disk.size
-  #   file_format  = "raw"
-  #   discard      = "ignore"
-  # }
+  disk {
+    interface    = "scsi0"
+    iothread     = true
+    datastore_id = var.disk.storage
+    size         = var.disk.size
+    file_format  = "raw"
+    discard      = "on"
+  }
 
   # dynamic "disk" {
   #   for_each = var.additionnal_disks

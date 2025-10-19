@@ -1,0 +1,20 @@
+- name: Configurer la VM avec les logiciels et services sous Linux
+  hosts: dev
+  gather_facts: yes
+  become: yes
+
+  vars_files:
+    - ../roles/dev/defaults.yml
+
+  roles:
+    - dev/utils
+    - dev/vnc
+    - dev/apt
+    - dev/compress
+    - dev/deb
+    - dev/dotnet
+    - dev/jenkins
+    # - dev/mongodb
+    - dev/nodejs
+    - dev/vscode
+    - dev/xampp

@@ -78,7 +78,7 @@ variable "template_tag" {
 variable "sockets" {
   description = "Number of sockets"
   type        = number
-  default     = 1
+  default     = 2
 }
 
 variable "cores" {
@@ -101,7 +101,7 @@ variable "disk" {
   })
   default = {
     storage = "local-lvm"
-    size = 10
+    size = 30
   }
 }
 

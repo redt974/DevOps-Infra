@@ -169,4 +169,29 @@ for MODULE in $VM_MODULES; do
   echo ""
 done
 
+# ==============================================================
+# 🧩 MISE À JOUR AUTOMATIQUE DU FICHIER hosts.yml ANSIBLE (yq v3)
+# ==============================================================
+
+ANSIBLE_HOSTS_FILE="/home/thibaut/DevOps-Infra/ansible/inventories/proxmox/hosts.yml"
+
+echo "🔄 Mise à jour du fichier Ansible hosts.yml avec les IPs détectées..."
+
+for MODULE in $VM_MODULES; do
+  VM_NAME=$(terraform output -raw ${MODULE}_vm_name)
+  VM_IPS=$(terraform output -json ${MODULE}_vm_ip)
+  VM_IP=$(echo "$VM_IPS" | jq -r '.[] | select(test("^192\\.168\\."))' | head -n1)
+
+  # Extraire le nom correspondant dans hosts.yml
+  HOST_PATTERN=$(yq e ".all.children.allhosts.hosts | keys | .[] | select(test(\"^vm-$(echo $MODULE)[0-9]*\\.local\$\"))" "$ANSIBLE_HOSTS_FILE")
+
+  if [[ -n "$HOST_PATTERN" ]]; then
+    echo "➡️  Mise à jour de $HOST_PATTERN avec l'adresse IP $VM_IP"
+    yq e -i ".all.children.allhosts.hosts.\"$HOST_PATTERN\".ansible_host = \"$VM_IP\"" "$ANSIBLE_HOSTS_FILE"
+  else
+    echo "⚠️  Aucun hôte correspondant à $MODULE trouvé dans $ANSIBLE_HOSTS_FILE, ignoré."
+  fi
+done
+
+echo "✅ Fichier hosts.yml mis à jour avec succès."
 echo "🎉 Script terminé avec succès !"

@@ -30,6 +30,7 @@ module "ubuntu_vm" {
   memory              = var.memory
   cores               = var.cores
   sockets             = var.sockets
+  disk                = var.disk
   vm_tags             = concat(var.vm_tags, ["ubuntu"])
   vm_os               = "ubuntu"
   proxmox_url         = var.proxmox_url
@@ -47,6 +48,7 @@ module "debian_vm" {
   memory              = var.memory
   cores               = var.cores
   sockets             = var.sockets
+  disk                = var.disk
   vm_tags             = concat(var.vm_tags, ["debian"])
   vm_os               = "debian"
   proxmox_url         = var.proxmox_url
@@ -64,6 +66,7 @@ module "arch_vm" {
   memory              = var.memory
   cores               = var.cores
   sockets             = var.sockets
+  disk                = var.disk
   vm_tags             = concat(var.vm_tags, ["arch"])
   vm_os               = "arch"
   proxmox_url         = var.proxmox_url

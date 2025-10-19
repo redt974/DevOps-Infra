@@ -1,0 +1,31 @@
+### Installer les logiciels APT disponibles dans software_list ###
+- name: Installer des logiciels basés sur apt
+  apt:
+    name: "{{ item }}"
+    state: present
+  loop: 
+    - python3
+    - docker.io
+    - maven
+    - g++
+    - docker-compose
+    - apache2
+    - php
+    - composer
+    - ansible
+  when: "{{ item }} in software_list"
+
+- name: Installer MySQL ou MariaDB selon l'OS
+  block:
+    - name: Installer MariaDB (remplace MySQL sur Debian)
+      apt:
+        name: mariadb-server
+        state: present
+      when: ansible_facts.distribution == "Debian"
+
+    - name: Installer MySQL (Ubuntu uniquement)
+      apt:
+        name: mysql-server
+        state: present
+      when: ansible_facts.distribution == "Ubuntu"
+  when: "'mysql-server' in software_list"

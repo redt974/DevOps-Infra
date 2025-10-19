@@ -6,6 +6,7 @@ variable "onboot" {}
 variable "memory" {}
 variable "cores" {}
 variable "sockets" {}
+variable "disk" {}
 variable "vm_tags" {}
 variable "vm_os" {}
 variable "proxmox_url" {}

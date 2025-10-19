@@ -1,8 +1,0 @@
-- name: Security hardening for selected hosts
-  hosts: allhosts
-  become: yes
-  gather_facts: yes
-  roles:
-    # - security/ssh
-    # - security/firewall
-    - security/hardening/debian

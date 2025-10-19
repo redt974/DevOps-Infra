@@ -37,6 +37,11 @@ sudo apt update && sudo apt upgrade -y
 echo "Installation des prérequis généraux..."
 sudo apt install -y tree jq htop net-tools sshpass software-properties-common curl vim apt-transport-https ca-certificates gnupg lsb-release unzip openjdk-17-jdk make build-essential
 
+# Installation de yq v4 sur Debian/Ubuntu
+sudo wget -O /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+sudo chmod +x /usr/local/bin/yq
+yq --version
+
 # 2) Terraform (HashiCorp)
 echo "Installation de Terraform..."
 curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg

@@ -1,0 +1,58 @@
+software_list:
+  - nodejs   # Node.js
+  - mysql-server   # MySQL
+  - python3   # Python
+  - xampp   # XAMPP
+  - docker.io  # Docker
+  - java  # Java
+  - maven  # Maven
+  - g++  # C/C++ development tools
+  - dotnet  # .NET SDK
+  - docker-compose  # Docker Compose
+  - apache2  # Apache web server
+  - php  # PHP
+  - composer  # Composer
+  - slack  # Slack
+  - discord  # Discord
+  - virtualbox  # VirtualBox
+  - ansible  # Ansible
+  - zoom  # Zoom
+  - android-studio  # Android Studio
+  - postman  # Postman
+  - intellij-idea  # IntelliJ IDEA
+  - jenkins   # Jenkins
+  - mongodb # MongoDB
+
+vscode_extensions:
+  - ms-python.python
+  - esbenp.prettier-vscode
+  - dbaeumer.vscode-eslint
+  - ms-azuretools.vscode-docker
+  - eamodio.gitlens
+  - vscjava.vscode-java-pack
+  - dsznajder.es7-react-js-snippets
+  - GitHub.copilot
+  - vscode-icons-team.vscode-icons
+  - mhutchie.git-graph
+  - christian-kohler.path-intellisense
+  - esbenp.prettier-vscode-eslint
+  - codota.tabnine-vscode
+  - formulahendry.vscode-npm-script
+  - ms-toolsai.jupyter
+  - VisualStudioExptTeam.vscodeintellicode
+  - ecmel.vscode-html-css
+  - coenraads.bracket-pair-colorizer
+  - GraphQL.vscode-graphql
+  - ritwickdey.LiveServer
+  - EditorConfig.EditorConfig
+  - PKief.material-icon-theme
+  - xabikos.JavaScriptSnippets
+  - ms-mssql.mssql
+  - ms-azuretools.vscode-azurefunctions
+  - rust-lang.rust
+  - DotJoshJohnson.xml
+  - Dart-Code.flutter
+  - ms-kubernetes-tools.vscode-kubernetes-tools
+  - msjsdiag.debugger-for-chrome
+  - redhat.java
+  - ms-dotnettools.csharp"
