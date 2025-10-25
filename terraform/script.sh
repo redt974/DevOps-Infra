@@ -25,51 +25,40 @@ fi
 declare -A os_counts
 declare -A all_pub_keys_per_os
 
+# Liste des OS et du nombre de VMs à créer pour chacun
+declare -A VM_COUNTS=(
+  ["ubuntu"]=3
+  ["debian"]=2
+  ["arch"]=1
+)
+
 echo "🔁 Génération des clés SSH et fichiers cloud-init..."
 
-for (( i=1; i<=NUM_VMS; i++ )); do
-  OS_ID="${OS_LIST[$((i-1))]}"   # Identifiant utilisé pour les chemins
-  USER_NAME="$OS_ID"             # Nom de l'utilisateur Linux
-  os_counts[$OS_ID]=$(( ${os_counts[$OS_ID]:-0} + 1 ))
-  VM_INDEX=${os_counts[$OS_ID]}
+for OS_ID in "${!VM_COUNTS[@]}"; do
+  COUNT=${VM_COUNTS[$OS_ID]}
+  for ((i=1; i<=COUNT; i++)); do
+    USER_NAME="$OS_ID"
+    HOSTNAME="serveur-${OS_ID}${i}"
+    DOMAIN="local"
+    INSTANCE_ID="${OS_ID}-${i}"
+    VM_NAME="${HOSTNAME}.${DOMAIN}"
+    VM_DIR="$OUTPUT_DIR/$VM_NAME"
 
-  HOSTNAME="serveur-${OS_ID}"
-  DOMAIN="local"
-  INSTANCE_ID="${OS_ID}-${VM_INDEX}"
+    mkdir -p "$VM_DIR"
 
-  VM_NAME="${HOSTNAME}.${DOMAIN}"
-  VM_KEY="$SSH_DIR/${VM_NAME}_id_rsa"
+    VM_KEY="$SSH_DIR/${VM_NAME}_id_rsa"
 
-  echo "🔐 [$VM_NAME] Suppression des anciennes clés SSH si existantes..."
-  rm -f "$VM_KEY" "$VM_KEY.pub"
+    echo "🔐 [$VM_NAME] Génération de la clé SSH..."
+    rm -f "$VM_KEY" "$VM_KEY.pub"
+    ssh-keygen -t rsa -b 4096 -N '' -f "$VM_KEY" -C "$VM_NAME" -q
+    PUB_KEY=$(cat "$VM_KEY.pub")
 
-  echo "🔐 [$VM_NAME] Génération de la clé SSH dans $VM_KEY..."
-  ssh-keygen -t rsa -b 4096 -N '' -f "$VM_KEY" -C "$VM_NAME" -q
+    echo "📝 [$VM_NAME] Création des fichiers cloud-init..."
 
-  pub_key=$(cat "$VM_KEY.pub")
-
-  # Cumuler toutes les clés publiques pour cet OS (toutes les VMs de même OS partagent l'accès)
-  if [[ -z "${all_pub_keys_per_os[$OS_ID]:-}" ]]; then
-    all_pub_keys_per_os[$OS_ID]="$pub_key"
-  else
-    all_pub_keys_per_os[$OS_ID]="${all_pub_keys_per_os[$OS_ID]}"$'\n'"$pub_key"
-  fi
-
-  VM_DIR="$OUTPUT_DIR/$VM_NAME"
-  mkdir -p "$VM_DIR"
-
-  echo "📝 [$VM_NAME] Création des fichiers cloud-init..."
-
-  ssh_keys_yaml=""
-  while IFS= read -r line || [[ -n $line ]]; do
-    ssh_keys_yaml+="      - $line"$'\n'
-  done <<< "${all_pub_keys_per_os[$OS_ID]}"
-
-  cat > "$VM_DIR/user_data.yml" <<EOF
+    cat > "$VM_DIR/user_data.yml" <<EOF
 #cloud-config
 hostname: $HOSTNAME
-local-hostname: $HOSTNAME
-fqdn: $HOSTNAME.${DOMAIN}
+fqdn: $VM_NAME
 manage_etc_hosts: true
 
 package_update: true
@@ -89,22 +78,23 @@ users:
     shell: /bin/bash
     sudo: ALL=(ALL) NOPASSWD:ALL
     ssh_authorized_keys:
-$ssh_keys_yaml
+      - $PUB_KEY
 
 ssh_pwauth: false
 EOF
 
-  cat > "$VM_DIR/meta_data.yml" <<EOF
+    cat > "$VM_DIR/meta_data.yml" <<EOF
 instance-id: ${INSTANCE_ID}
 local-hostname: $HOSTNAME
 EOF
 
-  cat > "$VM_DIR/${USER_NAME}.info" <<EOF
+    cat > "$VM_DIR/${VM_NAME}.info" <<EOF
 vm_name=${VM_NAME}
 ssh_key_path=${VM_KEY}
 ssh_user=${USER_NAME}
 EOF
 
+  done
 done
 
 echo "🎉 Toutes les clés SSH et fichiers cloud-init générés."
@@ -139,58 +129,65 @@ terraform apply -auto-approve \
 
 echo "✅ Terraform terminé. Tentative de détection des VMs..."
 
-# Détection automatique des VMs selon outputs Terraform
-VM_MODULES=$(terraform output -json | jq -r 'keys[] | select(test(".*_vm_name$"))' | sed 's/_vm_name$//' | sort)
+# Récupération des VMs depuis l'output 'vms'
+VM_JSON=$(terraform output -json vms)
 
-if [[ -z "$VM_MODULES" ]]; then
-  echo "❌ Aucune VM détectée via Terraform outputs."
-  exit 1
-fi
-
-echo "🔍 Détection de VMs : $VM_MODULES"
-
-for MODULE in $VM_MODULES; do
-  VM_NAME=$(terraform output -raw ${MODULE}_vm_name)
-  VM_ID=$(terraform output -raw ${MODULE}_vm_id)
-  VM_IPS=$(terraform output -json ${MODULE}_vm_ip)
-
-  VM_IP=$(echo "$VM_IPS" | jq -r '.[] | select(test("^192\\.168\\."))' | head -n1)
-
-  INFO_PATH="$OUTPUT_DIR/$VM_NAME/${MODULE}.info"
-  if [[ ! -f "$INFO_PATH" ]]; then
-    echo "⚠️  Fichier info manquant : $INFO_PATH"
-    continue
-  fi
-
-  source "$INFO_PATH"
-
-  echo "🔗 Connexion possible à $VM_NAME ($MODULE) :"
-  echo "ssh -i $ssh_key_path $ssh_user@$VM_IP"
-  echo ""
+# Boucle sur chaque VM
+echo "$VM_JSON" | jq -r 'to_entries[] | "\(.key) \(.value.ip[] | select(test("^192\\.168\\.")))"' | while read -r VM_NAME VM_IP; do
+    INFO_PATH="$OUTPUT_DIR/$VM_NAME.$DOMAIN/$VM_NAME.$DOMAIN.info"
+    if [[ ! -f "$INFO_PATH" ]]; then
+        echo "⚠️  Fichier info manquant : $INFO_PATH"
+        continue
+    fi
+    source "$INFO_PATH"
+    echo "🔗 Connexion possible à $VM_NAME :"
+    echo "ssh -i $ssh_key_path $ssh_user@$VM_IP"
+    echo ""
 done
 
 # ==============================================================
-# 🧩 MISE À JOUR AUTOMATIQUE DU FICHIER hosts.yml ANSIBLE (yq v3)
+# 🧩 MISE À JOUR AUTOMATIQUE DU FICHIER hosts.yml ANSIBLE (yq v4)
 # ==============================================================
 
 ANSIBLE_HOSTS_FILE="/home/thibaut/DevOps-Infra/ansible/inventories/proxmox/hosts.yml"
+VM_JSON=$(terraform output -json vms)
 
 echo "🔄 Mise à jour du fichier Ansible hosts.yml avec les IPs détectées..."
 
-for MODULE in $VM_MODULES; do
-  VM_NAME=$(terraform output -raw ${MODULE}_vm_name)
-  VM_IPS=$(terraform output -json ${MODULE}_vm_ip)
-  VM_IP=$(echo "$VM_IPS" | jq -r '.[] | select(test("^192\\.168\\."))' | head -n1)
+# Parcourir chaque VM
+echo "$VM_JSON" | jq -r 'to_entries[] | "\(.key) \(.value.ip[] | select(test("^192\\.168\\."))) \(.value.tags[])"' | while read -r VM_NAME VM_IP VM_OS; do
+  # Exemples :
+  # VM_NAME = serveur-ubuntu1
+  # VM_IP = 192.168.10.207
+  # VM_OS = ubuntu
 
-  # Extraire le nom correspondant dans hosts.yml
-  HOST_PATTERN=$(yq e ".all.children.allhosts.hosts | keys | .[] | select(test(\"^vm-$(echo $MODULE)[0-9]*\\.local\$\"))" "$ANSIBLE_HOSTS_FILE")
+  ANSIBLE_USER="$VM_OS"
+  SSH_KEY_PATH="$HOME/.ssh/${VM_NAME}.local_id_rsa"
+  HOST_KEY="vm-${VM_NAME#serveur-}.local"
 
-  if [[ -n "$HOST_PATTERN" ]]; then
-    echo "➡️  Mise à jour de $HOST_PATTERN avec l'adresse IP $VM_IP"
-    yq e -i ".all.children.allhosts.hosts.\"$HOST_PATTERN\".ansible_host = \"$VM_IP\"" "$ANSIBLE_HOSTS_FILE"
+  # Vérifie si le host existe déjà
+  if yq eval ".all.children.allhosts.hosts.\"${HOST_KEY}\"" "$ANSIBLE_HOSTS_FILE" >/dev/null; then
+    echo "➡️  Mise à jour de $HOST_KEY avec IP: $VM_IP"
   else
-    echo "⚠️  Aucun hôte correspondant à $MODULE trouvé dans $ANSIBLE_HOSTS_FILE, ignoré."
+    echo "➕ Ajout de $HOST_KEY (nouvel hôte)"
+    # Crée la structure s'il n'existe pas
+    yq eval -i ".all.children.allhosts.hosts.\"${HOST_KEY}\" = {}" "$ANSIBLE_HOSTS_FILE"
   fi
+
+  # Met à jour les valeurs ansible
+  yq eval -i ".all.children.allhosts.hosts.\"${HOST_KEY}\".ansible_host = \"$VM_IP\"" "$ANSIBLE_HOSTS_FILE"
+  yq eval -i ".all.children.allhosts.hosts.\"${HOST_KEY}\".ansible_user = \"$ANSIBLE_USER\"" "$ANSIBLE_HOSTS_FILE"
+  yq eval -i ".all.children.allhosts.hosts.\"${HOST_KEY}\".ansible_ssh_private_key_file = \"$SSH_KEY_PATH\"" "$ANSIBLE_HOSTS_FILE"
+
+  # (optionnel) ajoute automatiquement dans des groupes selon l’OS
+  if ! yq eval ".all.children.${VM_OS}.hosts.\"${HOST_KEY}\"" "$ANSIBLE_HOSTS_FILE" >/dev/null; then
+    yq eval -i ".all.children.${VM_OS}.hosts.\"${HOST_KEY}\" = {}" "$ANSIBLE_HOSTS_FILE"
+  fi
+
+  if ! grep -q "$VM_IP $HOST_KEY" /etc/hosts; then
+  echo "$VM_IP $HOST_KEY" | sudo tee -a /etc/hosts >/dev/null
+  fi
+
 done
 
 echo "✅ Fichier hosts.yml mis à jour avec succès."

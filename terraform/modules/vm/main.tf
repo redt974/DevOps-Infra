@@ -12,19 +12,18 @@ data "proxmox_virtual_environment_vms" "template" {
   tags      = [var.template_tag]
 }
 
+variable "user_data" {
+  type = string
+}
+
 resource "proxmox_virtual_environment_file" "cloud_user_config" {
   content_type = "snippets"
   datastore_id = "local"
   node_name    = var.target_node
 
   source_raw {
-    data = templatefile("${path.module}/../../cloud-init/${var.vm_hostname}.${var.domain}/user_data.yml",
-      {
-        local_hostname = var.vm_hostname
-        domain         = var.domain
-      }
-    )
-    file_name = "${var.vm_hostname}.${var.domain}-ci-user.yml"
+    data = file("${path.root}/cloud-init/${var.vm_hostname}.${var.domain}/user_data.yml")
+    file_name = "${var.vm_hostname}.${var.domain}-user.yml"
   }
 }
 
@@ -34,14 +33,8 @@ resource "proxmox_virtual_environment_file" "cloud_meta_config" {
   node_name    = var.target_node
 
   source_raw {
-    data = templatefile("${path.module}/../../cloud-init/${var.vm_hostname}.${var.domain}/meta_data.yml",
-      {
-        instance_id    = sha1(var.vm_hostname)
-        local_hostname = var.vm_hostname
-      }
-    )
-
-    file_name = "${var.vm_hostname}.${var.domain}-ci-meta_data.yml"
+    data = file("${path.root}/cloud-init/${var.vm_hostname}.${var.domain}/meta_data.yml")
+    file_name = "${var.vm_hostname}.${var.domain}-meta.yml"
   }
 }
 
@@ -130,5 +123,4 @@ resource "proxmox_virtual_environment_vm" "vm" {
     user_data_file_id = proxmox_virtual_environment_file.cloud_user_config.id
     meta_data_file_id = proxmox_virtual_environment_file.cloud_meta_config.id
   }
-
 }
