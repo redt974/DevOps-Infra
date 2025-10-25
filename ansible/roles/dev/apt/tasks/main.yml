@@ -13,7 +13,7 @@
     - php
     - composer
     - ansible
-  when: "{{ item }} in software_list"
+  when: "'{{ item }}' in software_list"
 
 - name: Installer MySQL ou MariaDB selon l'OS
   block:
